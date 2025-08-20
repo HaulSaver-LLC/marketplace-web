@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: haul-saver-marketplace
+    env: node
+    plan: starter # change if you need more resources
+    region: oregon # pick your closest region in Render
+    rootDir: web-template
+    runtime: node
+    nodeVersion: 18
+
+    buildCommand: |
+      yarn install --frozen-lockfile --production=false
+      yarn build
+
+    startCommand: yarn start
+
+    healthCheckPath: /
+    autoDeploy: true
+
+    # Set NODE_ENV explicitly (optional, Render defaults to production on Web Services)
+    envVars:
+      - key: NODE_ENV
+        value: production
+    # Add your secrets in the Render UI, not in git:
+    # - key: REACT_APP_SHARETRIBE_SDK_CLIENT_ID
+    #   sync: false
+    # - key: REACT_APP_STRIPE_PUBLISHABLE_KEY
+    #   sync: false
+    # - key: STRIPE_SECRET_KEY
+    #   sync: false
+    # - key: REACT_APP_MAPBOX_ACCESS_TOKEN
+    #   sync: false
