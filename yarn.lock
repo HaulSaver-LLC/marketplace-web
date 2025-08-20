@@ -11989,7 +11989,7 @@ sharetribe-flex-sdk@^1.21.1:
     lodash "^4.17.10"
     transit-js "^0.8.861"
 
-sharetribe-scripts@7.0.0:
+sharetribe-scripts@^7.0.0:
   version "7.0.0"
   resolved "https://registry.yarnpkg.com/sharetribe-scripts/-/sharetribe-scripts-7.0.0.tgz#07963af5a2ccc97c3d57150a25a78f35134fa477"
   integrity sha512-0VKjVG8ty5wZj69MKUEzurscmqvH7LG9qu9Yq1VtlQCmxiKgpJZDaeBT5BNHcUf3NYfbk85BbTufDFZIL3tn5Q==
