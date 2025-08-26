@@ -47,12 +47,35 @@ export default function SectionMap({ listing }) {
     }
 
     return m;
-  }, [attrs.title, geo, pd]);
+  }, [
+    attrs.title,
+    geo?.lat,
+    geo?.lng,
+    pd.pickupLat,
+    pd.pickupLng,
+    pd.dropoffLat,
+    pd.dropoffLng,
+    pd.pickupLocation,
+    pd.dropoffLocation,
+    pd?.location?.address,
+  ]);
 
   if (!markers.length) return null;
 
-  // Map wrapper requires a center when fuzzy is disabled: use first marker
-  const center = useMemo(() => [Number(markers[0].lng), Number(markers[0].lat)], [markers]);
+  // Choose a sensible center: pickup → drop-off → default geolocation
+  const center = useMemo(() => {
+    if (isNum(pd.pickupLng) && isNum(pd.pickupLat)) {
+      return [Number(pd.pickupLng), Number(pd.pickupLat)];
+    }
+    if (isNum(pd.dropoffLng) && isNum(pd.dropoffLat)) {
+      return [Number(pd.dropoffLng), Number(pd.dropoffLat)];
+    }
+    if (geo && isNum(geo.lng) && isNum(geo.lat)) {
+      return [Number(geo.lng), Number(geo.lat)];
+    }
+    // Fallback (won't be used since we early-return if no markers)
+    return [121.613, 13.936];
+  }, [pd.pickupLng, pd.pickupLat, pd.dropoffLng, pd.dropoffLat, geo?.lng, geo?.lat]);
 
   return (
     <section className={css.section} id="listing-map">
