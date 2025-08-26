@@ -32,6 +32,8 @@ import {
 // Import shared components
 import { NamedRedirect, Page } from '../../components';
 import TopbarContainer from '../../containers/TopbarContainer/TopbarContainer';
+// 👉 Map wrapper that uses MapboxMap (Static/Dynamic) under the hood
+import Map from '../../components/Map/Map';
 
 // Import modules from this directory
 import {
@@ -57,6 +59,8 @@ const STRIPE_ONBOARDING_RETURN_URL_TYPES = [
 
 const { UUID } = sdkTypes;
 
+const isNum = n => Number.isFinite(Number(n));
+
 // Pick images that are currently attached to listing entity and images that are going to be attached.
 // Avoid duplicates and images that should be removed.
 const pickRenderableImages = (
@@ -65,15 +69,12 @@ const pickRenderableImages = (
   uploadedImageIdsInOrder = [],
   removedImageIds = []
 ) => {
-  // Images are passed to EditListingForm so that it can generate thumbnails out of them
   const currentListingImages = currentListing && currentListing.images ? currentListing.images : [];
-  // Images not yet connected to the listing
   const unattachedImages = uploadedImageIdsInOrder.map(i => uploadedImages[i]);
   const allImages = currentListingImages.concat(unattachedImages);
 
   const pickImagesAndIds = (imgs, img) => {
     const imgId = img.imageId || img.id;
-    // Pick only unique images that are not marked to be removed
     const shouldInclude = !imgs.imageIds.includes(imgId) && !removedImageIds.includes(imgId);
     if (shouldInclude) {
       imgs.imageEntities.push(img);
@@ -82,50 +83,11 @@ const pickRenderableImages = (
     return imgs;
   };
 
-  // Return array of image entities. Something like: [{ id, imageId, type, attributes }, ...]
   return allImages.reduce(pickImagesAndIds, { imageEntities: [], imageIds: [] }).imageEntities;
 };
 
 /**
  * The EditListingPage component.
- *
- * @component
- * @param {Object} props
- * @param {propTypes.currentUser} props.currentUser - The current user
- * @param {propTypes.error} [props.createStripeAccountError] - The create stripe account error
- * @param {boolean} [props.fetchInProgress] - Whether the fetch is in progress
- * @param {propTypes.error} [props.fetchStripeAccountError] - The fetch stripe account error
- * @param {Function} [props.getOwnListing] - The get own listing function
- * @param {propTypes.error} props.getAccountLinkError - The get account link error
- * @param {boolean} props.getAccountLinkInProgress - Whether the get account link is in progress
- * @param {Function} props.onFetchExceptions - The on fetch exceptions function
- * @param {Function} props.onAddAvailabilityException - The on add availability exception function
- * @param {Function} props.onDeleteAvailabilityException - The on delete availability exception function
- * @param {Function} props.onCreateListingDraft - The on create listing draft function
- * @param {Function} props.onPublishListingDraft - The on publish listing draft function
- * @param {Function} props.onUpdateListing - The on update listing function
- * @param {Function} props.onImageUpload - The on image upload function
- * @param {Function} props.onRemoveListingImage - The on remove listing image function
- * @param {Function} props.onManageDisableScrolling - The on manage disable scrolling function
- * @param {Function} props.onPayoutDetailsChange - The on payout details change function
- * @param {Function} props.onPayoutDetailsSubmit - The on payout details submit function
- * @param {Function} props.onGetStripeConnectAccountLink - The get StripeConnectAccountLink function
- * @param {Object} props.history - The history object
- * @param {Function} props.history.push - The push function
- * @param {Object} props.location - The location object
- * @param {string} props.location.search - The search string
- * @param {Object} props.page - The page object (state of the EditListingPage)
- * @param {Object} props.params - The params object
- * @param {string} props.params.id - The id of the listing
- * @param {string} props.params.slug - The slug of the listing
- * @param {string} props.params.tab - The tab of the wizard
- * @param {string} props.params.type - The type of the listing (new, draft, pendingApproval)
- * @param {string} props.params.returnURLType - The return URL type (success or failure for stripe onboarding)
- * @param {boolean} props.scrollingDisabled - Whether the scrolling is disabled
- * @param {boolean} [props.stripeAccountFetched] - Whether the stripe account is fetched
- * @param {Object} [props.stripeAccount] - The stripe account object
- * @param {Object} [props.updateStripeAccountError] - The update stripe account error
- * @returns {JSX.Element}
  */
 export const EditListingPageComponent = props => {
   const intl = useIntl();
@@ -198,8 +160,6 @@ export const EditListingPageComponent = props => {
     const isPendingApproval =
       currentListing && currentListingState === LISTING_STATE_PENDING_APPROVAL;
 
-    // If page has already listingId (after submit) and current listings exist
-    // redirect to listing page
     const listingSlug = currentListing ? createSlug(currentListing.attributes.title) : null;
 
     const redirectProps = isPendingApproval
@@ -245,11 +205,10 @@ export const EditListingPageComponent = props => {
       addExceptionError,
       deleteExceptionError,
     };
-    // TODO: is this dead code? (shouldRedirectAfterPosting is checked before)
+
     const newListingPublished =
       isDraftURI && currentListing && currentListingState !== LISTING_STATE_DRAFT;
 
-    // Show form if user is posting a new listing or editing existing one
     const disableForm = page.redirectToListing && !showListingsError;
     const images = pickRenderableImages(
       currentListing,
@@ -262,6 +221,53 @@ export const EditListingPageComponent = props => {
       ? intl.formatMessage({ id: 'EditListingPage.titleCreateListing' })
       : intl.formatMessage({ id: 'EditListingPage.titleEditListing' });
 
+    // 🔎 Build markers for inline map preview (default location + pickup/drop-off)
+    const attrs = currentListing?.attributes || {};
+    const pd = attrs.publicData || {};
+    const geo = attrs.geolocation;
+    const markers = [
+      ...(geo && isNum(geo.lat) && isNum(geo.lng)
+        ? [
+            {
+              id: 'default',
+              lat: Number(geo.lat),
+              lng: Number(geo.lng),
+              popup: pd?.location?.address || attrs.title || 'Listing location',
+            },
+          ]
+        : []),
+      ...(isNum(pd.pickupLat) && isNum(pd.pickupLng)
+        ? [
+            {
+              id: 'pickup',
+              lat: Number(pd.pickupLat),
+              lng: Number(pd.pickupLng),
+              popup: `Pickup: ${pd.pickupLocation || ''}`.trim(),
+            },
+          ]
+        : []),
+      ...(isNum(pd.dropoffLat) && isNum(pd.dropoffLng)
+        ? [
+            {
+              id: 'dropoff',
+              lat: Number(pd.dropoffLat),
+              lng: Number(pd.dropoffLng),
+              popup: `Drop-off: ${pd.dropoffLocation || ''}`.trim(),
+            },
+          ]
+        : []),
+    ];
+
+    // ✅ Map wrapper requires a center when fuzzy is disabled
+    const center =
+      isNum(pd.pickupLng) && isNum(pd.pickupLat)
+        ? [Number(pd.pickupLng), Number(pd.pickupLat)]
+        : isNum(pd.dropoffLng) && isNum(pd.dropoffLat)
+        ? [Number(pd.dropoffLng), Number(pd.dropoffLat)]
+        : geo && isNum(geo.lng) && isNum(geo.lat)
+        ? [Number(geo.lng), Number(geo.lat)]
+        : undefined;
+
     return (
       <Page title={title} scrollingDisabled={scrollingDisabled}>
         <TopbarContainer
@@ -269,6 +275,7 @@ export const EditListingPageComponent = props => {
           desktopClassName={css.desktopTopbar}
           mobileClassName={css.mobileTopbar}
         />
+
         <EditListingWizard
           id="EditListingWizard"
           className={css.wizard}
@@ -311,11 +318,16 @@ export const EditListingPageComponent = props => {
           stripeAccountLinkError={getAccountLinkError}
           authScopes={authScopes}
         />
+
+        {/* 🗺️ Inline map preview while editing (optional) */}
+        {markers.length > 0 && center ? (
+          <div className={css.mapPreview} style={{ margin: '24px 0' }}>
+            <Map center={center} markers={markers} height={320} />
+          </div>
+        ) : null}
       </Page>
     );
   } else {
-    // If user has come to this page through a direct link to edit existing listing,
-    // we need to load it first.
     const loadingPageMsg = {
       id: 'EditListingPage.loadingListingData',
     };
@@ -387,12 +399,7 @@ const mapDispatchToProps = dispatch => ({
   onRemoveListingImage: imageId => dispatch(removeListingImage(imageId)),
 });
 
-// Note: it is important that the withRouter HOC is **outside** the
-// connect HOC, otherwise React Router won't rerender any Route
-// components since connect implements a shouldComponentUpdate
-// lifecycle hook.
-//
-// See: https://github.com/ReactTraining/react-router/issues/4671
+// Note: it is important that the withRouter HOC is **outside** the connect HOC
 const EditListingPage = compose(
   withRouter,
   connect(
