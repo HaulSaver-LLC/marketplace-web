@@ -11,22 +11,12 @@ import css from './Map.module.css';
 /**
  * Map component that uses StaticMap or DynamicMap from the configured map provider: Mapbox or Google Maps
  *
- * @component
- * @param {Object} props
- * @param {string?} props.className add more style rules in addition to component's own css.root
- * @param {string?} props.rootClassName overwrite components own css.root
- * @param {string?} props.mapRootClassName add style rules for the root container
- * @param {string?} props.address
- * @param {Object} props.center LatLng
- * @param {number} props.center.lat latitude
- * @param {number} props.center.lng longitude
- * @param {Object} props.obfuscatedCenter LatLng
- * @param {number} props.obfuscatedCenter.lat latitude
- * @param {number} props.obfuscatedCenter.lng longitude
- * @param {number} props.zoom
- * @param {Object} props.mapsConfig
- * @param {boolean} props.useStaticMap
- * @returns {JSX.Element} Map component
+ * Props of interest (forwarded to provider):
+ * - center | obfuscatedCenter
+ * - zoom
+ * - markers: [{ lng, lat, popup?, popupHtml?, color?, element?, id? }]
+ * - height
+ * - address, mapsConfig, useStaticMap
  */
 export const Map = props => {
   const config = useConfiguration();
@@ -40,7 +30,12 @@ export const Map = props => {
     zoom,
     mapsConfig,
     useStaticMap,
+    // NEW: forward markers and height (and anything else via ...rest)
+    markers = [],
+    height,
+    ...rest
   } = props;
+
   const mapsConfiguration = mapsConfig || config.maps;
   const hasApiAccessForMapProvider = !!getMapProviderApiAccess(mapsConfiguration);
   const isGoogleMapsInUse = mapsConfiguration.mapProvider === 'googleMaps';
@@ -63,20 +58,32 @@ export const Map = props => {
   }
 
   const location = mapsConfiguration.fuzzy.enabled ? obfuscatedCenter : center;
+
+  // FIX precedence: use provided zoom, otherwise fallback based on fuzzy setting
   const zoomLevel =
-    zoom || mapsConfiguration.fuzzy.enabled ? mapsConfiguration.fuzzy.defaultZoomLevel : 11;
+    zoom || (mapsConfiguration.fuzzy.enabled ? mapsConfiguration.fuzzy.defaultZoomLevel : 11);
 
   const isMapProviderAvailable = hasApiAccessForMapProvider && isMapsLibLoaded();
-  return !isMapProviderAvailable ? (
-    <div className={classes} />
-  ) : useStaticMap ? (
-    <StaticMap
-      center={location}
-      zoom={zoomLevel}
-      address={address}
-      mapsConfig={mapsConfiguration}
-    />
-  ) : (
+
+  if (!isMapProviderAvailable) {
+    return <div className={classes} />;
+  }
+
+  if (useStaticMap) {
+    return (
+      <StaticMap
+        center={location}
+        zoom={zoomLevel}
+        address={address}
+        mapsConfig={mapsConfiguration}
+        markers={markers}
+        height={height}
+        {...rest}
+      />
+    );
+  }
+
+  return (
     <DynamicMap
       containerClassName={classes}
       mapClassName={mapClasses}
@@ -84,6 +91,9 @@ export const Map = props => {
       zoom={zoomLevel}
       address={address}
       mapsConfig={mapsConfiguration}
+      markers={markers}
+      height={height}
+      {...rest}
     />
   );
 };
