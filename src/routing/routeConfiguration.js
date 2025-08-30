@@ -9,6 +9,7 @@ import PreviewResolverPage from '../containers/PreviewResolverPage/PreviewResolv
 // Otherwise, components will import form container eventually and
 // at that point css bundling / imports will happen in wrong order.
 import { NamedRedirect } from '../components';
+import { BillingPage } from '../containers/BillingPage';
 
 const pageDataLoadingAPI = getPageDataLoadingAPI();
 
@@ -409,6 +410,11 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/preview',
       name: 'PreviewResolverPage',
       component: PreviewResolverPage ,
+    },
+    {
+      path: '/billing',
+      exact: true,
+      component: BillingPage,
     },
   ];
 };

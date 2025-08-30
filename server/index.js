@@ -19,6 +19,14 @@ require('source-map-support').install();
 // Configure process.env with .env.* files
 require('./env').configureEnv();
 
+// Setup Stripe
+const bodyParser = require('body-parser');
+const stripeSetupIntents = require('./api/stripe/setupIntents');
+
+// …
+app.use(bodyParser.json());
+app.use('/api/stripe', stripeSetupIntents);
+
 // Setup Sentry
 // Note 1: This needs to happen before other express requires
 // Note 2: this doesn't use instrument.js file but log.js
