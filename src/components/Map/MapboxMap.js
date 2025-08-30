@@ -1,7 +1,9 @@
 // src/components/Map/MapboxMap.js
 import React, { useEffect, useMemo, useRef } from 'react';
 import mapboxgl from 'mapbox-gl';
-import 'mapbox-gl/dist/mapbox-gl.css';
+if (typeof window !== 'undefined') {
+  import('mapbox-gl/dist/mapbox-gl.css');
+}
 
 const TOKEN = process.env.REACT_APP_MAPBOX_ACCESS_TOKEN;
 
