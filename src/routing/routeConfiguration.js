@@ -4,6 +4,7 @@ import loadable from '@loadable/component';
 import getPageDataLoadingAPI from '../containers/pageDataLoadingAPI';
 import NotFoundPage from '../containers/NotFoundPage/NotFoundPage';
 import PreviewResolverPage from '../containers/PreviewResolverPage/PreviewResolverPage';
+import ComingSoonPage from '../containers/ComingSoonPage/ComingSoonPage';
 
 // routeConfiguration needs to initialize containers first
 // Otherwise, components will import form container eventually and
@@ -78,6 +79,12 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       name: 'LandingPage',
       component: LandingPage,
       loadData: pageDataLoadingAPI.LandingPage.loadData,
+    },
+    {
+      path: '/coming-soon',
+      name: 'ComingSoonPage',
+      component: ComingSoonPage,
+      exact: true,
     },
     {
       path: '/p/:pageId',
