@@ -87,7 +87,22 @@ export const ProfileSettingsPageComponent = props => {
   const { userFields, userTypes = [] } = config.user;
 
   const handleSubmit = (values, userType) => {
-    const { firstName, lastName, displayName, bio: rawBio, ...rest } = values;
+    const {
+      firstName,
+      lastName,
+      displayName,
+      bio: rawBio,
+
+      // NEW: pluck company/account fields so we can wire them into publicData
+      accountType,
+      companyName,
+      companyType,
+      taxId,
+      businessRegistrationNumber,
+
+      // keep everything else for pickUserFieldsData
+      ...rest
+    } = values;
 
     const displayNameMaybe = displayName
       ? { displayName: displayName.trim() }
@@ -96,13 +111,35 @@ export const ProfileSettingsPageComponent = props => {
     // Ensure that the optional bio is a string
     const bio = rawBio || '';
 
+    // Build company public data only if Company is selected
+    const companyPublicData =
+      accountType === 'company'
+        ? {
+            companyName: (companyName || '').trim(),
+            companyType: companyType || '',
+            taxId: (taxId || '').trim(),
+            businessRegistrationNumber: (businessRegistrationNumber || '').trim(),
+          }
+        : {
+            // optional: clear when switching back to Individual
+            companyName: null,
+            companyType: null,
+            taxId: null,
+            businessRegistrationNumber: null,
+          };
+
     const profile = {
       firstName: firstName.trim(),
       lastName: lastName.trim(),
       ...displayNameMaybe,
       bio,
       publicData: {
+        // existing configured public fields
         ...pickUserFieldsData(rest, 'public', userType, userFields),
+
+        // NEW: persist account/company fields so ProfilePage can read them
+        accountType: accountType || 'individual',
+        ...companyPublicData,
       },
       protectedData: {
         ...pickUserFieldsData(rest, 'protected', userType, userFields),
@@ -111,6 +148,7 @@ export const ProfileSettingsPageComponent = props => {
         ...pickUserFieldsData(rest, 'private', userType, userFields),
       },
     };
+
     const uploadedImage = props.image;
 
     // Update profileImage only if file system has been accessed
@@ -153,9 +191,18 @@ export const ProfileSettingsPageComponent = props => {
         ...displayNameMaybe,
         bio,
         profileImage: user.profileImage,
+
+        // existing custom field initial values
         ...initialValuesForUserFields(publicData, 'public', userType, userFields),
         ...initialValuesForUserFields(protectedData, 'protected', userType, userFields),
         ...initialValuesForUserFields(privateData, 'private', userType, userFields),
+
+        // NEW: prefill from publicData so the form shows saved values
+        accountType: publicData?.accountType || '',
+        companyName: publicData?.companyName || '',
+        companyType: publicData?.companyType || '',
+        taxId: publicData?.taxId || '',
+        businessRegistrationNumber: publicData?.businessRegistrationNumber || '',
       }}
       profileImage={profileImage}
       onImageUpload={e => onImageUploadHandler(e, onImageUpload)}

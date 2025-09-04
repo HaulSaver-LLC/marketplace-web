@@ -205,7 +205,7 @@ export const AuthenticationForms = props => {
     },
   ];
 
-  const handleSubmitSignup = values => {
+  /** const handleSubmitSignup = values => {
     const { userType, email, password, fname, lname, displayName, ...rest } = values;
     const displayNameMaybe = displayName ? { displayName: displayName.trim() } : {};
 
@@ -229,6 +229,121 @@ export const AuthenticationForms = props => {
     };
 
     submitSignup(params);
+  }; */
+
+  const handleSubmitSignup = values => {
+    const {
+      userType,
+      email,
+      password,
+      fname,
+      lname,
+      displayName,
+
+      // NEW: pull these out so they don’t end up in protectedData
+      accountType,
+      companyName,
+      companyType,
+      taxId,
+      businessRegistrationNumber,
+
+      // Everything else (custom user fields etc.)
+      ...rest
+    } = values;
+
+    const displayNameMaybe = displayName ? { displayName: displayName.trim() } : {};
+
+    // Build company data only when Company is selected
+    const companyPublicData =
+      accountType === 'company'
+        ? {
+            companyName: (companyName || '').trim(),
+            companyType: companyType || '',
+            taxId: (taxId || '').trim(),
+            businessRegistrationNumber: (businessRegistrationNumber || '').trim(),
+          }
+        : {};
+
+    // IMPORTANT: put accountType (+company fields) in publicData so ProfilePage can read them
+    const params = {
+      email,
+      password,
+      firstName: fname.trim(),
+      lastName: lname.trim(),
+      ...displayNameMaybe,
+
+      publicData: {
+        userType,
+        accountType: accountType || 'individual',
+        ...companyPublicData,
+        // Keep supporting your configured public user fields
+        ...pickUserFieldsData(rest, 'public', userType, userFields),
+      },
+
+      privateData: {
+        ...pickUserFieldsData(rest, 'private', userType, userFields),
+      },
+
+      protectedData: {
+        ...pickUserFieldsData(rest, 'protected', userType, userFields),
+        // Ensure non-user-field leftovers go to protectedData,
+        // but NOT our company fields (we already plucked them above)
+        ...getNonUserFieldParams(rest, userFields),
+      },
+    };
+
+    submitSignup(params);
+  };
+
+  // ... imports above
+  // import { createUserWithEmail, updateProfile } from 'your-sdk-wrapper' // depends on your project
+
+  const handleSignupSubmit = async (values, sdk, dispatch) => {
+    const {
+      email,
+      password,
+      fname,
+      lname,
+      displayName,
+      accountType,
+      companyName,
+      companyType,
+      taxId,
+      businessRegistrationNumber,
+      // other fields...
+    } = values;
+
+    // 1) Create the user (email & password)
+    await sdk.auth.createUserWithEmailAndPassword({ email, password });
+
+    // 2) Update profile basics (display name etc.)
+    //    IMPORTANT: publicData is where ProfilePage reads from by default.
+    const publicData = {
+      accountType: accountType || 'individual',
+      // Only include company fields if accountType === 'company'
+      ...(accountType === 'company'
+        ? {
+            companyName: companyName || '',
+            companyType: companyType || '',
+            taxId: taxId || '',
+            businessRegistrationNumber: businessRegistrationNumber || '',
+          }
+        : {}),
+    };
+
+    // You can also use metadata instead (private), but ProfilePage currently reads publicData first.
+    const profileParams = {
+      firstName: fname,
+      lastName: lname,
+      displayName: displayName || `${fname} ${lname}`.trim(),
+      publicData,
+      // metadata: { ... } // optional
+    };
+
+    await sdk.currentUser.updateProfile({ profile: profileParams });
+
+    // (Optional) dispatch redux or navigate
+    // dispatch(...), or redirect to profile
   };
 
   const loginErrorMessage = (
