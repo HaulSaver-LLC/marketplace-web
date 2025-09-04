@@ -15,9 +15,12 @@
 import React from 'react';
 import ReactDOMClient from 'react-dom/client';
 import { loadableReady } from '@loadable/component';
+<<<<<<< HEAD
 if (typeof window !== 'undefined') {
   import('mapbox-gl/dist/mapbox-gl.css');
 }
+=======
+>>>>>>> parent of 414348083 (Add new listing field for location)
 
 // Import default styles before other CSS-related modules are imported
 // This ensures that the styles in marketplaceDefaults.css are included

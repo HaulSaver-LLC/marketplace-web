@@ -16,22 +16,11 @@ const getInitialValues = props => {
   const { listing } = props;
   const { geolocation, publicData } = listing?.attributes || {};
 
-  // Default (built-in) location fields
+  // Only render current search if full place object is available in the URL params
+  // TODO bounds are missing - those need to be queried directly from Google Places
   const locationFieldsPresent = publicData?.location?.address && geolocation;
   const location = publicData?.location || {};
   const { address, building } = location;
-
-  // Extended fields for pickup & drop-off (saved in publicData)
-  const pd = publicData || {};
-  const pickup =
-    pd.pickupLocation && Number.isFinite(pd.pickupLat) && Number.isFinite(pd.pickupLng)
-      ? { address: pd.pickupLocation, lat: pd.pickupLat, lng: pd.pickupLng }
-      : null;
-
-  const dropoff =
-    pd.dropoffLocation && Number.isFinite(pd.dropoffLat) && Number.isFinite(pd.dropoffLng)
-      ? { address: pd.dropoffLocation, lat: pd.dropoffLat, lng: pd.dropoffLng }
-      : null;
 
   return {
     building,
@@ -41,13 +30,25 @@ const getInitialValues = props => {
           selectedPlace: { address, origin: geolocation },
         }
       : null,
-    pickup,
-    dropoff,
   };
 };
 
 /**
  * The EditListingLocationPanel component.
+ *
+ * @component
+ * @param {Object} props
+ * @param {string} [props.className] - Custom class that extends the default class for the root element
+ * @param {string} [props.rootClassName] - Custom class that overrides the default class for the root element
+ * @param {propTypes.ownListing} props.listing - The listing object
+ * @param {boolean} props.disabled - Whether the form is disabled
+ * @param {boolean} props.ready - Whether the form is ready
+ * @param {Function} props.onSubmit - The submit function
+ * @param {string} props.submitButtonText - The submit button text
+ * @param {boolean} props.panelUpdated - Whether the panel is updated
+ * @param {boolean} props.updateInProgress - Whether the update is in progress
+ * @param {Object} props.errors - The errors object
+ * @returns {JSX.Element}
  */
 const EditListingLocationPanel = props => {
   // State is needed since LocationAutocompleteInput doesn't have internal state
@@ -84,52 +85,31 @@ const EditListingLocationPanel = props => {
           />
         )}
       </H3>
-
       <EditListingLocationForm
         className={css.form}
         initialValues={state.initialValues}
         onSubmit={values => {
-          const { building = '', location, pickup, dropoff } = values;
-
-          // Built-in location (default single location in Flex)
+          const { building = '', location } = values;
           const {
             selectedPlace: { address, origin },
           } = location;
 
-          // Preserve other publicData keys to avoid overwriting unrelated fields
-          const currentPublicData = listing?.attributes?.publicData || {};
-
           // New values for listing attributes
           const updateValues = {
-            geolocation: origin, // default location geolocation
+            geolocation: origin,
             publicData: {
-              ...currentPublicData,
-
-              // Default location block (kept as-is for search/location filters)
               location: { address, building },
-
-              // === Custom fields (text) + coordinates for Mapbox pins ===
-              // If your Console keys differ, rename these 2 IDs:
-              pickupLocation: pickup?.address || '',
-              dropoffLocation: dropoff?.address || '',
-
-              pickupLat: pickup?.lat ?? null,
-              pickupLng: pickup?.lng ?? null,
-              dropoffLat: dropoff?.lat ?? null,
-              dropoffLng: dropoff?.lng ?? null,
             },
           };
-
-          // Save the initialValues to state so UI stays in sync after submit
+          // Save the initialValues to state
+          // LocationAutocompleteInput doesn't have internal state
+          // and therefore re-rendering would overwrite the values during XHR call.
           setState({
             initialValues: {
               building,
               location: { search: address, selectedPlace: { address, origin } },
-              pickup: pickup || null,
-              dropoff: dropoff || null,
             },
           });
-
           onSubmit(updateValues);
         }}
         saveActionMsg={submitButtonText}
