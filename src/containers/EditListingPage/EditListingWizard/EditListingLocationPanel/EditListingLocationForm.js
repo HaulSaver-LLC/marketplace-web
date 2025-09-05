@@ -2,10 +2,6 @@ import React from 'react';
 import { Form as FinalForm } from 'react-final-form';
 import classNames from 'classnames';
 
-import { Field } from 'react-final-form';
-import { required } from '../../../../util/validators';
-import { FieldLocationInput } from '../../../../components'; // Mapbox geocoder field you added
-
 // Import configs and util modules
 import { FormattedMessage, useIntl } from '../../../../util/reactIntl';
 import { propTypes } from '../../../../util/types';
@@ -30,6 +26,24 @@ const identity = v => v;
 
 /**
  * The EditListingLocationForm component.
+ *
+ * @component
+ * @param {Object} props
+ * @param {string} props.formId - The form id
+ * @param {string} [props.className] - Custom class that extends the default class for the root element
+ * @param {string} [props.rootClassName] - Custom class that overrides the default class for the root element
+ * @param {boolean} props.autoFocus - Whether the form is auto focused
+ * @param {boolean} props.disabled - Whether the form is disabled
+ * @param {boolean} props.ready - Whether the form is ready
+ * @param {boolean} props.updated - Whether the form is updated
+ * @param {boolean} props.updateInProgress - Whether the update is in progress
+ * @param {Object} props.fetchErrors - The fetch errors object
+ * @param {string} props.saveActionMsg - The save action message
+ * @param {Function} props.onSubmit - The submit function
+ * @param {Object} props.errors - The errors object
+ * @param {propTypes.error} props.errors.showListingsError - The show listings error
+ * @param {propTypes.error} props.errors.updateListingError - The update listing error
+ * @returns {JSX.Element}
  */
 export const EditListingLocationForm = props => (
   <FinalForm
@@ -59,6 +73,7 @@ export const EditListingLocationForm = props => (
       const addressNotRecognizedMessage = intl.formatMessage({
         id: 'EditListingLocationForm.addressNotRecognized',
       });
+
       const optionalText = intl.formatMessage({
         id: 'EditListingLocationForm.optionalText',
       });
@@ -84,7 +99,6 @@ export const EditListingLocationForm = props => (
             </p>
           ) : null}
 
-          {/* Default single "Location" field (kept as-is; powers default location & search) */}
           <FieldLocationAutocompleteInput
             rootClassName={css.locationAddress}
             inputClassName={css.locationAutocompleteInput}
@@ -106,28 +120,6 @@ export const EditListingLocationForm = props => (
             )}
           />
 
-          {/* NEW: Pickup & Drop-off fields (Mapbox geocoding via FieldLocationInput) */}
-          <div className={css.locationAddress}>
-            <Field
-              name="pickup"
-              component={FieldLocationInput}
-              label="Pickup location"
-              placeholder="Enter pickup address"
-              validate={required('Pickup is required')}
-            />
-          </div>
-
-          <div className={css.locationAddress}>
-            <Field
-              name="dropoff"
-              component={FieldLocationInput}
-              label="Drop-off location"
-              placeholder="Enter drop-off address"
-              validate={required('Drop-off is required')}
-            />
-          </div>
-
-          {/* Optional extra text field (unchanged) */}
           <FieldTextInput
             className={css.building}
             type="text"
