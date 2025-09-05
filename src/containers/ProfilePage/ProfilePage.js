@@ -185,85 +185,6 @@ export const DesktopReviews = props => {
   );
 };
 
-/**
- * CompanyInfoMaybe
- * Renders company details if accountType === 'company'.
- * Reads values from publicData first, then metadata as a fallback.
- */
-const CompanyInfoMaybe = props => {
-  const { publicData, metadata } = props;
-
-  const accountType = publicData?.accountType ?? metadata?.accountType;
-  if (accountType !== 'company') return null;
-
-  const companyName = publicData?.companyName ?? metadata?.companyName ?? '';
-  const companyTypeRaw = publicData?.companyType ?? metadata?.companyType ?? '';
-  const taxId = publicData?.taxId ?? metadata?.taxId ?? '';
-  const businessRegistrationNumber =
-    publicData?.businessRegistrationNumber ?? metadata?.businessRegistrationNumber ?? '';
-
-  // Map internal values to human-readable labels
-  const companyTypeLabelIdMap = {
-    dealer: 'ProfilePage.companyType.dealer',
-    retailer: 'ProfilePage.companyType.retailer',
-    warehouse: 'ProfilePage.companyType.warehouse',
-    freightForwarder: 'ProfilePage.companyType.freightForwarder',
-  };
-  const companyTypeLabelId =
-    companyTypeLabelIdMap[companyTypeRaw] || 'ProfilePage.companyType.unknown';
-
-  // If nothing to show beyond the accountType, render nothing.
-  const hasAny = companyName || companyTypeRaw || taxId || businessRegistrationNumber;
-  if (!hasAny) return null;
-
-  return (
-    <section className={css.companySection}>
-      <H4 as="h2" className={css.sectionTitle}>
-        <FormattedMessage id="ProfilePage.companyInfo.title" />
-      </H4>
-      <ul className={css.detailList}>
-        {companyName ? (
-          <li>
-            <strong>
-              <FormattedMessage id="ProfilePage.companyInfo.companyName" />:
-            </strong>{' '}
-            <span>{companyName}</span>
-          </li>
-        ) : null}
-
-        {companyTypeRaw ? (
-          <li>
-            <strong>
-              <FormattedMessage id="ProfilePage.companyInfo.companyType" />:
-            </strong>{' '}
-            <span>
-              <FormattedMessage id={companyTypeLabelId} />
-            </span>
-          </li>
-        ) : null}
-
-        {taxId ? (
-          <li>
-            <strong>
-              <FormattedMessage id="ProfilePage.companyInfo.taxId" />:
-            </strong>{' '}
-            <span>{taxId}</span>
-          </li>
-        ) : null}
-
-        {businessRegistrationNumber ? (
-          <li>
-            <strong>
-              <FormattedMessage id="ProfilePage.companyInfo.businessRegNo" />:
-            </strong>{' '}
-            <span>{businessRegistrationNumber}</span>
-          </li>
-        ) : null}
-      </ul>
-    </section>
-  );
-};
-
 export const CustomUserFields = props => {
   const { publicData, metadata, userFieldConfig } = props;
 
@@ -275,10 +196,6 @@ export const CustomUserFields = props => {
   return (
     <>
       <SectionDetailsMaybe {...props} />
-
-      {/* NEW: Company details */}
-      <CompanyInfoMaybe publicData={publicData} metadata={metadata} />
-
       {propsForCustomFields.map(customFieldProps => {
         const { schemaType, key, ...fieldProps } = customFieldProps;
         return schemaType === SCHEMA_TYPE_MULTI_ENUM ? (

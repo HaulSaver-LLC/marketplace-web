@@ -7,6 +7,7 @@ import arrayMutators from 'final-form-arrays';
 
 import { FormattedMessage, injectIntl, intlShape } from '../../../util/reactIntl';
 import { ensureCurrentUser } from '../../../util/data';
+import { propTypes } from '../../../util/types';
 import * as validators from '../../../util/validators';
 import { isUploadImageOverLimitError } from '../../../util/errors';
 import { getPropsForCustomUserFieldInputs } from '../../../util/userHelpers';
@@ -25,44 +26,24 @@ import {
 import css from './ProfileSettingsForm.module.css';
 
 const ACCEPT_IMAGES = 'image/*';
-const UPLOAD_CHANGE_DELAY = 2000;
-
-// Map a stored companyType (either a code like "dealer" or a translation id like
-// "ProfileSettingsForm.companyType.dealer") to a human label.
-const formatCompanyType = (type, intl) => {
-  if (!type) return '—';
-
-  // If the value is already an i18n id, translate it (with fallback to last segment)
-  if (typeof type === 'string' && type.startsWith('ProfileSettingsForm.companyType.')) {
-    const fallback = type.split('.').pop();
-    return intl.formatMessage({ id: type, defaultMessage: fallback });
-  }
-
-  // Otherwise assume it's one of our codes
-  const idMap = {
-    dealer: 'ProfileSettingsForm.companyType.dealer',
-    retailer: 'ProfileSettingsForm.companyType.retailer',
-    warehouse: 'ProfileSettingsForm.companyType.warehouse',
-    freightForwarder: 'ProfileSettingsForm.companyType.freightForwarder',
-  };
-  const id = idMap[type];
-  return id ? intl.formatMessage({ id, defaultMessage: type }) : type;
-};
+const UPLOAD_CHANGE_DELAY = 2000; // Show spinner so that browser has time to load img srcset
 
 const DisplayNameMaybe = props => {
   const { userTypeConfig, intl } = props;
 
   const isDisabled = userTypeConfig?.defaultUserFields?.displayName === false;
-  if (isDisabled) return null;
+  if (isDisabled) {
+    return null;
+  }
 
-  const isRequired = userTypeConfig?.displayNameSettings?.required === true;
+  const { required } = userTypeConfig?.displayNameSettings || {};
+  const isRequired = required === true;
 
   const validateMaybe = isRequired
     ? {
         validate: validators.required(
           intl.formatMessage({
             id: 'ProfileSettingsForm.displayNameRequired',
-            defaultMessage: 'Display name is required',
           })
         ),
       }
@@ -71,10 +52,7 @@ const DisplayNameMaybe = props => {
   return (
     <div className={css.sectionContainer}>
       <H4 as="h2" className={css.sectionTitle}>
-        <FormattedMessage
-          id="ProfileSettingsForm.displayNameHeading"
-          defaultMessage="Your display name"
-        />
+        <FormattedMessage id="ProfileSettingsForm.displayNameHeading" />
       </H4>
       <FieldTextInput
         className={css.row}
@@ -83,33 +61,55 @@ const DisplayNameMaybe = props => {
         name="displayName"
         label={intl.formatMessage({
           id: 'ProfileSettingsForm.displayNameLabel',
-          defaultMessage: 'Display name',
         })}
         placeholder={intl.formatMessage({
           id: 'ProfileSettingsForm.displayNamePlaceholder',
-          defaultMessage: 'John Doe',
         })}
         {...validateMaybe}
       />
       <p className={css.extraInfo}>
-        <FormattedMessage
-          id="ProfileSettingsForm.displayNameInfo"
-          defaultMessage="The display name defaults to first name plus initial of last name."
-        />
+        <FormattedMessage id="ProfileSettingsForm.displayNameInfo" />
       </p>
     </div>
   );
 };
 
+/**
+ * ProfileSettingsForm
+ * TODO: change to functional component
+ *
+ * @component
+ * @param {Object} props
+ * @param {string} [props.rootClassName] - Custom class that overrides the default class for the root element
+ * @param {string} [props.className] - Custom class that extends the default class for the root element
+ * @param {string} [props.formId] - The form id
+ * @param {propTypes.currentUser} props.currentUser - The current user
+ * @param {Object} props.userTypeConfig - The user type config
+ * @param {string} props.userTypeConfig.userType - The user type
+ * @param {Array<Object>} props.userFields - The user fields
+ * @param {Object} [props.profileImage] - The profile image
+ * @param {string} props.marketplaceName - The marketplace name
+ * @param {Function} props.onImageUpload - The function to handle image upload
+ * @param {Function} props.onSubmit - The function to handle form submission
+ * @param {boolean} props.uploadInProgress - Whether the upload is in progress
+ * @param {propTypes.error} [props.uploadImageError] - The upload image error
+ * @param {boolean} props.updateInProgress - Whether the update is in progress
+ * @param {propTypes.error} [props.updateProfileError] - The update profile error
+ * @param {intlShape} props.intl - The intl object
+ * @returns {JSX.Element}
+ */
 class ProfileSettingsFormComponent extends Component {
   constructor(props) {
     super(props);
+
     this.uploadDelayTimeoutId = null;
     this.state = { uploadDelay: false };
     this.submittedValues = {};
   }
 
   componentDidUpdate(prevProps) {
+    // Upload delay is additional time window where Avatar is added to the DOM,
+    // but not yet visible (time to load image URL from srcset)
     if (prevProps.uploadInProgress && !this.props.uploadInProgress) {
       this.setState({ uploadDelay: true });
       this.uploadDelayTimeoutId = window.setTimeout(() => {
@@ -152,56 +152,37 @@ class ProfileSettingsFormComponent extends Component {
 
           const user = ensureCurrentUser(currentUser);
 
-          // Labels with safe fallbacks
+          // First name
           const firstNameLabel = intl.formatMessage({
             id: 'ProfileSettingsForm.firstNameLabel',
-            defaultMessage: 'First name',
           });
           const firstNamePlaceholder = intl.formatMessage({
             id: 'ProfileSettingsForm.firstNamePlaceholder',
-            defaultMessage: 'Your first name',
           });
-          const firstNameRequired = validators.required(
-            intl.formatMessage({
-              id: 'ProfileSettingsForm.firstNameRequired',
-              defaultMessage: 'First name is required',
-            })
-          );
+          const firstNameRequiredMessage = intl.formatMessage({
+            id: 'ProfileSettingsForm.firstNameRequired',
+          });
+          const firstNameRequired = validators.required(firstNameRequiredMessage);
 
+          // Last name
           const lastNameLabel = intl.formatMessage({
             id: 'ProfileSettingsForm.lastNameLabel',
-            defaultMessage: 'Last name',
           });
           const lastNamePlaceholder = intl.formatMessage({
             id: 'ProfileSettingsForm.lastNamePlaceholder',
-            defaultMessage: 'Your last name',
           });
-          const lastNameRequired = validators.required(
-            intl.formatMessage({
-              id: 'ProfileSettingsForm.lastNameRequired',
-              defaultMessage: 'Last name is required',
-            })
-          );
+          const lastNameRequiredMessage = intl.formatMessage({
+            id: 'ProfileSettingsForm.lastNameRequired',
+          });
+          const lastNameRequired = validators.required(lastNameRequiredMessage);
 
+          // Bio
           const bioLabel = intl.formatMessage({
             id: 'ProfileSettingsForm.bioLabel',
-            defaultMessage: 'Bio',
           });
           const bioPlaceholder = intl.formatMessage({
             id: 'ProfileSettingsForm.bioPlaceholder',
-            defaultMessage: 'Tell us a little bit about yourself…',
           });
-
-          // Read-only company data (from values/publicData)
-          const accountType = values?.accountType || values?.publicData?.accountType || '';
-          const isCompany = accountType === 'company';
-          const companyName = values?.companyName || values?.publicData?.companyName || '';
-          const companyType = values?.companyType || values?.publicData?.companyType || '';
-          const taxId = values?.taxId || values?.publicData?.taxId || '';
-          const businessRegistrationNumber =
-            values?.businessRegistrationNumber ||
-            values?.publicData?.businessRegistrationNumber ||
-            '';
 
           const uploadingOverlay =
             uploadInProgress || this.state.uploadDelay ? (
@@ -215,10 +196,10 @@ class ProfileSettingsFormComponent extends Component {
           const transientUserProfileImage = profileImage.uploadedImage || user.profileImage;
           const transientUser = { ...user, profileImage: transientUserProfileImage };
 
+          // Ensure that file exists if imageFromFile is used
           const fileExists = !!profileImage.file;
           const fileUploadInProgress = uploadInProgress && fileExists;
           const delayAfterUpload = profileImage.imageId && this.state.uploadDelay;
-
           const imageFromFile =
             fileExists && (fileUploadInProgress || delayAfterUpload) ? (
               <ImageFromFile
@@ -233,6 +214,9 @@ class ProfileSettingsFormComponent extends Component {
               </ImageFromFile>
             ) : null;
 
+          // Avatar is rendered in hidden during the upload delay
+          // Upload delay smoothes image change process:
+          // responsive img has time to load srcset stuff before it is shown to user.
           const avatarClasses = classNames(errorClasses, css.avatar, {
             [css.avatarInvisible]: this.state.uploadDelay,
           });
@@ -252,35 +236,23 @@ class ProfileSettingsFormComponent extends Component {
                 {imageFromFile}
                 {avatarComponent}
                 <div className={css.changeAvatar}>
-                  <FormattedMessage
-                    id="ProfileSettingsForm.changeAvatar"
-                    defaultMessage="Change picture"
-                  />
+                  <FormattedMessage id="ProfileSettingsForm.changeAvatar" />
                 </div>
               </div>
             ) : (
               <div className={css.avatarPlaceholder}>
                 <div className={css.avatarPlaceholderText}>
-                  <FormattedMessage
-                    id="ProfileSettingsForm.addYourProfilePicture"
-                    defaultMessage="Add your profile picture"
-                  />
+                  <FormattedMessage id="ProfileSettingsForm.addYourProfilePicture" />
                 </div>
                 <div className={css.avatarPlaceholderTextMobile}>
-                  <FormattedMessage
-                    id="ProfileSettingsForm.addYourProfilePictureMobile"
-                    defaultMessage="Add your profile picture"
-                  />
+                  <FormattedMessage id="ProfileSettingsForm.addYourProfilePictureMobile" />
                 </div>
               </div>
             );
 
           const submitError = updateProfileError ? (
             <div className={css.error}>
-              <FormattedMessage
-                id="ProfileSettingsForm.updateProfileFailed"
-                defaultMessage="Updating profile failed"
-              />
+              <FormattedMessage id="ProfileSettingsForm.updateProfileFailed" />
             </div>
           ) : null;
 
@@ -306,13 +278,9 @@ class ProfileSettingsFormComponent extends Component {
                 handleSubmit(e);
               }}
             >
-              {/* Avatar */}
               <div className={css.sectionContainer}>
                 <H4 as="h2" className={css.sectionTitle}>
-                  <FormattedMessage
-                    id="ProfileSettingsForm.yourProfilePicture"
-                    defaultMessage="Your profile picture"
-                  />
+                  <FormattedMessage id="ProfileSettingsForm.yourProfilePicture" />
                 </H4>
                 <Field
                   accept={ACCEPT_IMAGES}
@@ -338,22 +306,17 @@ class ProfileSettingsFormComponent extends Component {
                     };
 
                     let error = null;
+
                     if (isUploadImageOverLimitError(uploadImageError)) {
                       error = (
                         <div className={css.error}>
-                          <FormattedMessage
-                            id="ProfileSettingsForm.imageUploadFailedFileTooLarge"
-                            defaultMessage="Image is too large"
-                          />
+                          <FormattedMessage id="ProfileSettingsForm.imageUploadFailedFileTooLarge" />
                         </div>
                       );
                     } else if (uploadImageError) {
                       error = (
                         <div className={css.error}>
-                          <FormattedMessage
-                            id="ProfileSettingsForm.imageUploadFailed"
-                            defaultMessage="Image upload failed"
-                          />
+                          <FormattedMessage id="ProfileSettingsForm.imageUploadFailed" />
                         </div>
                       );
                     }
@@ -378,23 +341,15 @@ class ProfileSettingsFormComponent extends Component {
                   }}
                 </Field>
                 <div className={css.tip}>
-                  <FormattedMessage
-                    id="ProfileSettingsForm.tip"
-                    defaultMessage="Use a clear, square image."
-                  />
+                  <FormattedMessage id="ProfileSettingsForm.tip" />
                 </div>
                 <div className={css.fileInfo}>
-                  <FormattedMessage
-                    id="ProfileSettingsForm.fileInfo"
-                    defaultMessage="JPG, PNG, or GIF"
-                  />
+                  <FormattedMessage id="ProfileSettingsForm.fileInfo" />
                 </div>
               </div>
-
-              {/* Name */}
               <div className={css.sectionContainer}>
                 <H4 as="h2" className={css.sectionTitle}>
-                  <FormattedMessage id="ProfileSettingsForm.yourName" defaultMessage="Your name" />
+                  <FormattedMessage id="ProfileSettingsForm.yourName" />
                 </H4>
                 <div className={css.nameContainer}>
                   <FieldTextInput
@@ -418,72 +373,11 @@ class ProfileSettingsFormComponent extends Component {
                 </div>
               </div>
 
-              {/* Display name (maybe) */}
               <DisplayNameMaybe userTypeConfig={userTypeConfig} intl={intl} />
 
-              {/* READ-ONLY Company info */}
-              {isCompany ? (
-                <div className={css.sectionContainer}>
-                  <H4 as="h2" className={css.sectionTitle}>
-                    <FormattedMessage
-                      id="ProfileSettingsForm.companySectionHeading"
-                      defaultMessage="Company information"
-                    />
-                  </H4>
-
-                  <div className={css.row}>
-                    <strong>
-                      {intl.formatMessage({
-                        id: 'ProfileSettingsForm.companyNameLabel',
-                        defaultMessage: 'Company name',
-                      })}
-                      :
-                    </strong>{' '}
-                    <span>{companyName || '—'}</span>
-                  </div>
-
-                  <div className={css.row}>
-                    <strong>
-                      {intl.formatMessage({
-                        id: 'ProfileSettingsForm.companyTypeLabel',
-                        defaultMessage: 'Company type',
-                      })}
-                      :
-                    </strong>{' '}
-                    <span>{formatCompanyType(companyType, intl)}</span>
-                  </div>
-
-                  <div className={css.row}>
-                    <strong>
-                      {intl.formatMessage({
-                        id: 'ProfileSettingsForm.taxIdLabel',
-                        defaultMessage: 'Tax ID',
-                      })}
-                      :
-                    </strong>{' '}
-                    <span>{taxId || '—'}</span>
-                  </div>
-
-                  <div className={css.row}>
-                    <strong>
-                      {intl.formatMessage({
-                        id: 'ProfileSettingsForm.businessRegNoLabel',
-                        defaultMessage: 'Business registration number',
-                      })}
-                      :
-                    </strong>{' '}
-                    <span>{businessRegistrationNumber || '—'}</span>
-                  </div>
-                </div>
-              ) : null}
-
-              {/* Bio */}
               <div className={classNames(css.sectionContainer)}>
                 <H4 as="h2" className={css.sectionTitle}>
-                  <FormattedMessage
-                    id="ProfileSettingsForm.bioHeading"
-                    defaultMessage="Your profile bio"
-                  />
+                  <FormattedMessage id="ProfileSettingsForm.bioHeading" />
                 </H4>
                 <FieldTextInput
                   type="textarea"
@@ -493,21 +387,14 @@ class ProfileSettingsFormComponent extends Component {
                   placeholder={bioPlaceholder}
                 />
                 <p className={css.extraInfo}>
-                  <FormattedMessage
-                    id="ProfileSettingsForm.bioInfo"
-                    defaultMessage="Tell others more about yourself on {marketplaceName}."
-                    values={{ marketplaceName }}
-                  />
+                  <FormattedMessage id="ProfileSettingsForm.bioInfo" values={{ marketplaceName }} />
                 </p>
               </div>
-
-              {/* Custom configured user fields */}
               <div className={classNames(css.sectionContainer, css.lastSection)}>
                 {userFieldProps.map(({ key, ...fieldProps }) => (
                   <CustomExtendedDataField key={key} {...fieldProps} formId={formId} />
                 ))}
               </div>
-
               {submitError}
               <Button
                 className={css.submitButton}
@@ -516,10 +403,7 @@ class ProfileSettingsFormComponent extends Component {
                 disabled={submitDisabled}
                 ready={pristineSinceLastSubmit}
               >
-                <FormattedMessage
-                  id="ProfileSettingsForm.saveChanges"
-                  defaultMessage="Save changes"
-                />
+                <FormattedMessage id="ProfileSettingsForm.saveChanges" />
               </Button>
             </Form>
           );
@@ -529,18 +413,8 @@ class ProfileSettingsFormComponent extends Component {
   }
 }
 
-ProfileSettingsFormComponent.defaultProps = {
-  uploadImageError: null,
-  updateProfileError: null,
-  profileImage: {},
-  userTypeConfig: null,
-};
-
-ProfileSettingsFormComponent.propTypes = {
-  intl: intlShape.isRequired,
-};
-
 const ProfileSettingsForm = compose(injectIntl)(ProfileSettingsFormComponent);
+
 ProfileSettingsForm.displayName = 'ProfileSettingsForm';
 
 export default ProfileSettingsForm;
