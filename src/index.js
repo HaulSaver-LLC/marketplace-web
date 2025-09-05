@@ -15,9 +15,6 @@
 import React from 'react';
 import ReactDOMClient from 'react-dom/client';
 import { loadableReady } from '@loadable/component';
-if (typeof window !== 'undefined') {
-  import('mapbox-gl/dist/mapbox-gl.css');
-}
 
 // Import default styles before other CSS-related modules are imported
 // This ensures that the styles in marketplaceDefaults.css are included
