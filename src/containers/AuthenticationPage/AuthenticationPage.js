@@ -245,7 +245,6 @@ export const AuthenticationForms = props => {
       companyName,
       companyType,
       taxId,
-      businessRegistrationNumber,
 
       // Everything else (custom user fields etc.)
       ...rest
@@ -260,7 +259,6 @@ export const AuthenticationForms = props => {
             companyName: (companyName || '').trim(),
             companyType: companyType || '',
             taxId: (taxId || '').trim(),
-            businessRegistrationNumber: (businessRegistrationNumber || '').trim(),
           }
         : {};
 
@@ -309,7 +307,6 @@ export const AuthenticationForms = props => {
       companyName,
       companyType,
       taxId,
-      businessRegistrationNumber,
       // other fields...
     } = values;
 
@@ -326,7 +323,6 @@ export const AuthenticationForms = props => {
             companyName: companyName || '',
             companyType: companyType || '',
             taxId: taxId || '',
-            businessRegistrationNumber: businessRegistrationNumber || '',
           }
         : {}),
     };

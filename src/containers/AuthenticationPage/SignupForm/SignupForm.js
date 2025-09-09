@@ -220,17 +220,14 @@ const SignupFormComponent = props => (
                     <option value="" disabled>
                       {intl.formatMessage({ id: 'SignupForm.companyTypePlaceholder' })}
                     </option>
-                    <option value="dealer">
-                      {intl.formatMessage({ id: 'SignupForm.companyType.dealer' })}
+                    <option value="ownerOperator">
+                      {intl.formatMessage({ id: 'SignupForm.companyType.ownerOperator' })}
                     </option>
-                    <option value="retailer">
-                      {intl.formatMessage({ id: 'SignupForm.companyType.retailer' })}
+                    <option value="smallFleet">
+                      {intl.formatMessage({ id: 'SignupForm.companyType.smallFleet' })}
                     </option>
-                    <option value="warehouse">
-                      {intl.formatMessage({ id: 'SignupForm.companyType.warehouse' })}
-                    </option>
-                    <option value="freightForwarder">
-                      {intl.formatMessage({ id: 'SignupForm.companyType.freightForwarder' })}
+                    <option value="largeFleet">
+                      {intl.formatMessage({ id: 'SignupForm.companyType.largeFleet' })}
                     </option>
                   </FieldSelect>
 
@@ -244,21 +241,6 @@ const SignupFormComponent = props => (
                     placeholder={intl.formatMessage({ id: 'SignupForm.taxIdPlaceholder' })}
                     validate={validators.required(
                       intl.formatMessage({ id: 'SignupForm.taxIdRequired' })
-                    )}
-                  />
-
-                  <FieldTextInput
-                    className={css.row}
-                    type="text"
-                    id={
-                      formId ? `${formId}.businessRegistrationNumber` : 'businessRegistrationNumber'
-                    }
-                    name="businessRegistrationNumber"
-                    autoComplete="off"
-                    label={intl.formatMessage({ id: 'SignupForm.businessRegNoLabel' })}
-                    placeholder={intl.formatMessage({ id: 'SignupForm.businessRegNoPlaceholder' })}
-                    validate={validators.required(
-                      intl.formatMessage({ id: 'SignupForm.businessRegNoRequired' })
                     )}
                   />
                 </div>

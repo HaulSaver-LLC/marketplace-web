@@ -1199,10 +1199,9 @@
   "SignupForm.companyTypeLabel": "Company type",
   "SignupForm.companyTypePlaceholder": "Select company type",
   "SignupForm.companyTypeRequired": "Company type is required",
-  "SignupForm.companyType.dealer": "Dealer",
-  "SignupForm.companyType.retailer": "Retailer",
-  "SignupForm.companyType.warehouse": "Warehouse",
-  "SignupForm.companyType.freightForwarder": "Freight forwarder",
+  "SignupForm.companyType.ownerOperator": "Owner Operator",
+  "SignupForm.companyType.smallFleet": "Small Fleet",
+  "SignupForm.companyType.largeFleet": "Large Fleet",
 
   "SignupForm.taxIdLabel": "Tax ID",
   "SignupForm.taxIdPlaceholder": "e.g., TIN / EIN",
@@ -1218,9 +1217,8 @@
   "ProfilePage.companyInfo.taxId": "Tax ID",
   "ProfilePage.companyInfo.businessRegNo": "Business registration number",
 
-  "ProfilePage.companyType.dealer": "Dealer",
-  "ProfilePage.companyType.retailer": "Retailer",
-  "ProfilePage.companyType.warehouse": "Warehouse",
-  "ProfilePage.companyType.freightForwarder": "Freight forwarder",
+  "ProfilePage.companyType.ownerOperator": "Owner Operator",
+  "ProfilePage.companyType.smallFleet": "Small Fleet",
+  "ProfilePage.companyType.largeFleet": "Large Fleet",
   "ProfilePage.companyType.unknown": "Other"
 }
