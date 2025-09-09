@@ -40,10 +40,9 @@ const formatCompanyType = (type, intl) => {
 
   // Otherwise assume it's one of our codes
   const idMap = {
-    dealer: 'ProfileSettingsForm.companyType.dealer',
-    retailer: 'ProfileSettingsForm.companyType.retailer',
-    warehouse: 'ProfileSettingsForm.companyType.warehouse',
-    freightForwarder: 'ProfileSettingsForm.companyType.freightForwarder',
+    ownerOperator: 'ProfileSettingsForm.companyType.ownerOperator',
+    smallFleet: 'ProfileSettingsForm.companyType.smallFleet',
+    largeFleet: 'ProfileSettingsForm.companyType.largeFleet',
   };
   const id = idMap[type];
   return id ? intl.formatMessage({ id, defaultMessage: type }) : type;
@@ -198,10 +197,6 @@ class ProfileSettingsFormComponent extends Component {
           const companyName = values?.companyName || values?.publicData?.companyName || '';
           const companyType = values?.companyType || values?.publicData?.companyType || '';
           const taxId = values?.taxId || values?.publicData?.taxId || '';
-          const businessRegistrationNumber =
-            values?.businessRegistrationNumber ||
-            values?.publicData?.businessRegistrationNumber ||
-            '';
 
           const uploadingOverlay =
             uploadInProgress || this.state.uploadDelay ? (
@@ -462,17 +457,6 @@ class ProfileSettingsFormComponent extends Component {
                       :
                     </strong>{' '}
                     <span>{taxId || '—'}</span>
-                  </div>
-
-                  <div className={css.row}>
-                    <strong>
-                      {intl.formatMessage({
-                        id: 'ProfileSettingsForm.businessRegNoLabel',
-                        defaultMessage: 'Business registration number',
-                      })}
-                      :
-                    </strong>{' '}
-                    <span>{businessRegistrationNumber || '—'}</span>
                   </div>
                 </div>
               ) : null}
