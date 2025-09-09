@@ -1,0 +1,147 @@
+.root {
+  --gap: 16px;
+}
+.hero {
+  padding: 32px 24px 16px;
+  text-align: center;
+}
+.headline {
+  margin: 0;
+  font-size: 30px;
+  line-height: 1.2;
+}
+.subhead {
+  margin: 8px auto 0;
+  max-width: 880px;
+  color: var(--matterColorAnti);
+}
+.headline {
+  margin: 0;
+  font-size: 28px;
+  line-height: 1.2;
+}
+.subhead {
+  margin: 8px auto 0;
+  max-width: 720px;
+  color: var(--matterColorAnti);
+}
+.pageGrid {
+  max-width: 1160px;
+  margin: 16px auto 64px;
+  padding: 0 24px;
+  display: grid;
+  grid-template-columns: 1.15fr 0.85fr;
+  gap: 28px;
+  align-items: start;
+}
+.leftPanel {
+  display: grid;
+  gap: 16px;
+}
+.formPanel {
+  position: relative;
+}
+.formCard {
+  background: var(--matterColorLight);
+  border: 1px solid var(--matterColorNegative);
+  border-radius: 16px;
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.08);
+  padding: 20px;
+}
+
+.cardTitle {
+  margin: 0 0 8px;
+}
+.benefitsCard,
+.stepsCard {
+  background: var(--matterColorLight);
+  border: 1px solid var(--matterColorNegative);
+  border-radius: 16px;
+  padding: 16px;
+}
+.benefitsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 8px;
+}
+.bulletIcon {
+  vertical-align: middle;
+  margin-right: 8px;
+}
+
+.stepsList {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+  display: grid;
+  gap: 10px;
+}
+.stepNum {
+  display: inline-grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: 999px;
+  border: 1px solid var(--matterColorNegative);
+  font-size: 12px;
+  margin-right: 8px;
+}
+
+.trustRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px;
+}
+.trustItem {
+  border: 1px solid var(--matterColorNegative);
+  border-radius: 12px;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  justify-content: center;
+}
+.starIcon {
+  opacity: 0.9;
+}
+
+.form {
+  display: grid;
+  gap: 16px;
+}
+.twoCol {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+@media (max-width: 960px) {
+  .pageGrid {
+    grid-template-columns: 1fr;
+  }
+  .formPanel {
+    order: -1;
+  }
+}
+@media (max-width: 768px) {
+  .twoCol {
+    grid-template-columns: 1fr;
+  }
+}
+
+.submitError {
+  background: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fecaca;
+  padding: 12px;
+  border-radius: 8px;
+}
+.submitBtn {
+  margin-top: 4px;
+  width: 100%;
+}
+.altAction {
+  text-align: center;
+  margin-top: 8px;
+}
