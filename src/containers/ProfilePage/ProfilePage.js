@@ -199,21 +199,18 @@ const CompanyInfoMaybe = props => {
   const companyName = publicData?.companyName ?? metadata?.companyName ?? '';
   const companyTypeRaw = publicData?.companyType ?? metadata?.companyType ?? '';
   const taxId = publicData?.taxId ?? metadata?.taxId ?? '';
-  const businessRegistrationNumber =
-    publicData?.businessRegistrationNumber ?? metadata?.businessRegistrationNumber ?? '';
 
   // Map internal values to human-readable labels
   const companyTypeLabelIdMap = {
-    dealer: 'ProfilePage.companyType.dealer',
-    retailer: 'ProfilePage.companyType.retailer',
-    warehouse: 'ProfilePage.companyType.warehouse',
-    freightForwarder: 'ProfilePage.companyType.freightForwarder',
+    ownerOperator: 'ProfilePage.companyType.ownerOperator',
+    smallFleet: 'ProfilePage.companyType.smallFleet',
+    largeFleet: 'ProfilePage.companyType.largeFleet',
   };
   const companyTypeLabelId =
     companyTypeLabelIdMap[companyTypeRaw] || 'ProfilePage.companyType.unknown';
 
   // If nothing to show beyond the accountType, render nothing.
-  const hasAny = companyName || companyTypeRaw || taxId || businessRegistrationNumber;
+  const hasAny = companyName || companyTypeRaw || taxId;
   if (!hasAny) return null;
 
   return (
@@ -248,15 +245,6 @@ const CompanyInfoMaybe = props => {
               <FormattedMessage id="ProfilePage.companyInfo.taxId" />:
             </strong>{' '}
             <span>{taxId}</span>
-          </li>
-        ) : null}
-
-        {businessRegistrationNumber ? (
-          <li>
-            <strong>
-              <FormattedMessage id="ProfilePage.companyInfo.businessRegNo" />:
-            </strong>{' '}
-            <span>{businessRegistrationNumber}</span>
           </li>
         ) : null}
       </ul>

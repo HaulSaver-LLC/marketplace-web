@@ -98,7 +98,6 @@ export const ProfileSettingsPageComponent = props => {
       companyName,
       companyType,
       taxId,
-      businessRegistrationNumber,
 
       // keep everything else for pickUserFieldsData
       ...rest
@@ -118,14 +117,12 @@ export const ProfileSettingsPageComponent = props => {
             companyName: (companyName || '').trim(),
             companyType: companyType || '',
             taxId: (taxId || '').trim(),
-            businessRegistrationNumber: (businessRegistrationNumber || '').trim(),
           }
         : {
             // optional: clear when switching back to Individual
             companyName: null,
             companyType: null,
             taxId: null,
-            businessRegistrationNumber: null,
           };
 
     const profile = {
@@ -202,7 +199,6 @@ export const ProfileSettingsPageComponent = props => {
         companyName: publicData?.companyName || '',
         companyType: publicData?.companyType || '',
         taxId: publicData?.taxId || '',
-        businessRegistrationNumber: publicData?.businessRegistrationNumber || '',
       }}
       profileImage={profileImage}
       onImageUpload={e => onImageUploadHandler(e, onImageUpload)}
