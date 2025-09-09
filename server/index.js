@@ -48,7 +48,8 @@ const sdkUtils = require('./api-util/sdk');
 
 const buildPath = path.resolve(__dirname, '..', 'build');
 const dev = process.env.REACT_APP_ENV === 'development';
-const PORT = parseInt(process.env.PORT, 10);
+//const PORT = parseInt(process.env.PORT, 10);
+const PORT = Number(process.env.PORT) || 10000; // fallback for local dev
 const redirectSSL =
   process.env.SERVER_SHARETRIBE_REDIRECT_SSL != null
     ? process.env.SERVER_SHARETRIBE_REDIRECT_SSL
