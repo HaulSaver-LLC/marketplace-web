@@ -4,6 +4,8 @@ import loadable from '@loadable/component';
 import getPageDataLoadingAPI from '../containers/pageDataLoadingAPI';
 import NotFoundPage from '../containers/NotFoundPage/NotFoundPage';
 import PreviewResolverPage from '../containers/PreviewResolverPage/PreviewResolverPage';
+import ProviderSignupPage from '../containers/ProviderSignupPage/ProviderSignupPage';
+import ShipperSignupPage from '../containers/ShipperSignupPage/ShipperSignupPage';
 
 // routeConfiguration needs to initialize containers first
 // Otherwise, components will import form container eventually and
@@ -380,6 +382,20 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/notfound',
       name: 'NotFoundPage',
       component: props => <NotFoundPage {...props} />,
+    },
+
+    //Carrier/Provider Signup page
+    { 
+      path: '/signup/provider', 
+      name: 'ProviderSignupPage', 
+      component: ProviderSignupPage 
+    },
+
+    //Shipper or Customer Signup page
+    {
+     path: '/signup/shipper',
+     name: 'ShipperSignupPage',
+      component: ShipperSignupPage,
     },
 
     // Do not change this path!
