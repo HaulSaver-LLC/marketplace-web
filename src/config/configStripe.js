@@ -1,175 +1,75 @@
 /* Stripe related configuration.
 
-NOTE: REACT_APP_STRIPE_PUBLISHABLE_KEY is mandatory environment variable.
-This variable is set in a hidden file: .env
-To make Stripe connection work, you also need to set Stripe's private key in the Sharetribe Console.
+NOTE:
+- REACT_APP_STRIPE_PUBLISHABLE_KEY is PUBLIC (browser). Put only pk_test/pk_live here.
+- Your Stripe SECRET key stays in Sharetribe Console and/or your server env (never in the client).
+
+If you customize anything below, keep in mind that Sharetribe still handles the actual
+PaymentIntent lifecycle when you use Flex transaction transitions.
 */
 
+// ========= Keys & basic flags =========
+
+/** @type {string|undefined} */
 export const publishableKey = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY;
 
-// A maximum number of days forwards during which a booking can be made.
-// This is limited due to Stripe holding funds up to 90 days from the
-// moment they are charged. However, US accounts can hold funds up to 2 years.
-// https://docs.stripe.com/connect/manual-payouts
+export const isStripeEnabled = Boolean(publishableKey);
+
+if (process.env.NODE_ENV !== 'production' && !publishableKey) {
+  // eslint-disable-next-line no-console
+  console.warn(
+    '[Stripe] REACT_APP_STRIPE_PUBLISHABLE_KEY is missing. ' +
+      'Add it to .env.local for localhost or Render env for prod.'
+  );
+}
+
+// ========= Booking window =========
 //
-// If your marketplace is for US only, you should also be aware that available
-// time slots can only be fetched for 366 days into the future.
-// https://www.sharetribe.com/api-reference/marketplace.html#query-time-slots
-export const dayCountAvailableForBooking = 90;
+// Stripe holds funds up to ~90 days globally (US can be longer).
+// Default to 90, allow override via env when you know your country/flow.
+//
+const envBookingDays = Number(process.env.REACT_APP_BOOKING_DAY_COUNT || '');
+export const dayCountAvailableForBooking =
+  Number.isFinite(envBookingDays) && envBookingDays > 0 ? envBookingDays : 90;
 
-/**
- * Default merchant category code (MCC)
- * MCCs are used to classify businesses by the type of goods or services they provide.
- *
- * In this template, we use code 5734 Computer Software Stores as a default for all the connected accounts.
- *
- * See the whole list of MCC codes from https://stripe.com/docs/connect/setting-mcc#list
- */
-export const defaultMCC = '5734';
+// ========= MCC (Merchant Category Code) =========
+//
+// Default: 5734 Computer Software Stores.
+// You can override via REACT_APP_STRIPE_DEFAULT_MCC (e.g., 4214 for local trucking, 4789 for transport services).
+//
+export const defaultMCC = (process.env.REACT_APP_STRIPE_DEFAULT_MCC || '5734').trim();
 
-/*
-Stripe only supports payments in certain countries, see full list
-at https://stripe.com/global
-
-You can find the bank account formats from https://stripe.com/docs/connect/payouts-bank-accounts
-*/
-
+// ========= Supported payout countries (Stripe Connect) =========
+//
+// See: https://stripe.com/global
+// This list is used for displaying the correct bank field requirements to providers.
+//
 export const supportedCountries = [
+  { code: 'AU', currency: 'AUD', accountConfig: { bsb: true, accountNumber: true } }, // Australia
+  { code: 'AT', currency: 'EUR', accountConfig: { iban: true } }, // Austria
+  { code: 'BE', currency: 'EUR', accountConfig: { iban: true } }, // Belgium
+  { code: 'BG', currency: 'BGN', accountConfig: { iban: true } }, // Bulgaria
   {
-    //Australia
-    code: 'AU',
-    currency: 'AUD',
-    accountConfig: {
-      bsb: true,
-      accountNumber: true,
-    },
-  },
-  {
-    // Austria
-    code: 'AT',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Belgium
-    code: 'BE',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    //Bulgraia
-    code: 'BG',
-    currency: 'BGN',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Canada
     code: 'CA',
     currency: 'CAD',
-    accountConfig: {
-      transitNumber: true,
-      institutionNumber: true,
-      accountNumber: true,
-    },
+    accountConfig: { transitNumber: true, institutionNumber: true, accountNumber: true },
   },
+  { code: 'CY', currency: 'EUR', accountConfig: { iban: true } }, // Cyprus
+  { code: 'CZ', currency: 'CZK', accountConfig: { iban: true } }, // Czech Republic
+  { code: 'DK', currency: 'DKK', accountConfig: { iban: true } }, // Denmark
+  { code: 'EE', currency: 'EUR', accountConfig: { iban: true } }, // Estonia
+  { code: 'FI', currency: 'EUR', accountConfig: { iban: true } }, // Finland
+  { code: 'FR', currency: 'EUR', accountConfig: { iban: true } }, // France
+  { code: 'DE', currency: 'EUR', accountConfig: { iban: true } }, // Germany
+  { code: 'GR', currency: 'EUR', accountConfig: { iban: true } }, // Greece
   {
-    //Cyprus
-    code: 'CY',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    //	Czech Republic
-    code: 'CZ',
-    currency: 'CZK',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Denmark
-    code: 'DK',
-    currency: 'DKK',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Estionia
-    code: 'EE',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Finland
-    code: 'FI',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // France
-    code: 'FR',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Germany
-    code: 'DE',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Greece
-    code: 'GR',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Hong Kong
     code: 'HK',
     currency: 'HKD',
-    accountConfig: {
-      clearingCode: true,
-      branchCode: true,
-      accountNumber: true,
-    },
+    accountConfig: { clearingCode: true, branchCode: true, accountNumber: true },
   },
+  { code: 'IE', currency: 'EUR', accountConfig: { iban: true } }, // Ireland
+  { code: 'IT', currency: 'EUR', accountConfig: { iban: true } }, // Italy
   {
-    // Ireland
-    code: 'IE',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Italy
-    code: 'IT',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Japan
     code: 'JP',
     currency: 'JPY',
     accountConfig: {
@@ -181,160 +81,52 @@ export const supportedCountries = [
       accountOwnerName: true,
     },
   },
+  { code: 'LV', currency: 'EUR', accountConfig: { iban: true } }, // Latvia
+  { code: 'LT', currency: 'EUR', accountConfig: { iban: true } }, // Lithuania
+  { code: 'LU', currency: 'EUR', accountConfig: { iban: true } }, // Luxembourg
+  { code: 'MT', currency: 'EUR', accountConfig: { iban: true } }, // Malta
+  { code: 'MX', currency: 'MXN', accountConfig: { clabe: true } }, // Mexico
+  { code: 'NL', currency: 'EUR', accountConfig: { iban: true } }, // Netherlands
+  { code: 'NZ', currency: 'NZD', accountConfig: { accountNumber: true } }, // New Zealand
+  { code: 'NO', currency: 'NOK', accountConfig: { iban: true } }, // Norway
+  { code: 'PL', currency: 'PLN', accountConfig: { iban: true } }, // Poland
+  { code: 'PT', currency: 'EUR', accountConfig: { iban: true } }, // Portugal
+  { code: 'RO', currency: 'RON', accountConfig: { iban: true } }, // Romania
   {
-    // Latvia
-    code: 'LV',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Lithuania
-    code: 'LT',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Luxembourg
-    code: 'LU',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Malta
-    code: 'MT',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Mexico
-    code: 'MX',
-    currency: 'MXN',
-    accountConfig: {
-      clabe: true,
-    },
-  },
-  {
-    // Netherlands
-    code: 'NL',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // New Zealand
-    code: 'NZ',
-    currency: 'NZD',
-    accountConfig: {
-      accountNumber: true,
-    },
-  },
-  {
-    // Norway
-    code: 'NO',
-    currency: 'NOK',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Poland
-    code: 'PL',
-    currency: 'PLN',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Portugal
-    code: 'PT',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Romania
-    code: 'RO',
-    currency: 'RON',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Singapore
     code: 'SG',
     currency: 'SGD',
-    accountConfig: {
-      bankCode: true,
-      branchCode: true,
-      accountNumber: true,
-    },
+    accountConfig: { bankCode: true, branchCode: true, accountNumber: true },
   },
-  {
-    // Slovakia
-    code: 'SK',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Slovenia
-    code: 'SI',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Spain
-    code: 'ES',
-    currency: 'EUR',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Sweden
-    code: 'SE',
-    currency: 'SEK',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // Switzerland
-    code: 'CH',
-    currency: 'CHF',
-    accountConfig: {
-      iban: true,
-    },
-  },
-  {
-    // United Kingdom
-    code: 'GB',
-    currency: 'GBP',
-    accountConfig: {
-      sortCode: true,
-      accountNumber: true,
-    },
-  },
-  {
-    // United States
-    code: 'US',
-    currency: 'USD',
-    accountConfig: {
-      routingNumber: true,
-      accountNumber: true,
-    },
-  },
+  { code: 'SK', currency: 'EUR', accountConfig: { iban: true } }, // Slovakia
+  { code: 'SI', currency: 'EUR', accountConfig: { iban: true } }, // Slovenia
+  { code: 'ES', currency: 'EUR', accountConfig: { iban: true } }, // Spain
+  { code: 'SE', currency: 'SEK', accountConfig: { iban: true } }, // Sweden
+  { code: 'CH', currency: 'CHF', accountConfig: { iban: true } }, // Switzerland
+  { code: 'GB', currency: 'GBP', accountConfig: { sortCode: true, accountNumber: true } }, // United Kingdom
+  { code: 'US', currency: 'USD', accountConfig: { routingNumber: true, accountNumber: true } }, // United States
 ];
+
+// ========= Optional helpers =========
+
+/** Quick map of country config by code. */
+export const supportedCountryMap = supportedCountries.reduce((acc, c) => {
+  acc[c.code] = c;
+  return acc;
+}, {});
+
+/** Friendly labels for bank fields (can be used in forms). */
+export const bankFieldLabels = {
+  iban: 'IBAN',
+  bsb: 'BSB',
+  clabe: 'CLABE',
+  sortCode: 'Sort code',
+  routingNumber: 'Routing number',
+  institutionNumber: 'Institution number',
+  transitNumber: 'Transit number',
+  accountNumber: 'Account number',
+  bankCode: 'Bank code',
+  branchCode: 'Branch code',
+  bankName: 'Bank name',
+  branchName: 'Branch name',
+  accountOwnerName: 'Account holder name',
+};

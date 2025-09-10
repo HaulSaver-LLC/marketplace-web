@@ -12,6 +12,10 @@
  * takes control and all the functionality such as routing is handled
  * in the client.
  */
+import express from 'express';
+import path from 'path';
+import setupIntentRoutes from './routes/stripe-setupintent.js';
+import webhookRoutes from './routes/stripe-webhook.js';
 
 // This enables nice stacktraces from the minified production bundle
 require('source-map-support').install();
@@ -78,6 +82,17 @@ const checkEnvVariables = variables => {
 checkEnvVariables(MANDATORY_ENV_VARIABLES);
 
 const app = express();
+
+// 1) Webhook (needs raw body) BEFORE any JSON parser
+app.use('/webhook', webhookRoutes);
+
+// 2) Normal JSON parsing for the rest of the app
+app.use(express.json());
+
+// 3) Your Stripe API routes
+app.use('/api/stripe', setupIntentRoutes);
+
+// ... the rest of FTW server (SSR etc.)
 
 const errorPage500 = fs.readFileSync(path.join(buildPath, '500.html'), 'utf-8');
 const errorPage404 = fs.readFileSync(path.join(buildPath, '404.html'), 'utf-8');
