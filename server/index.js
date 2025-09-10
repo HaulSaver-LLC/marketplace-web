@@ -19,6 +19,14 @@ require('source-map-support').install();
 // Configure process.env with .env.* files
 require('./env').configureEnv();
 
+//Wire route in server Stripe payment
+const registrationApi = require('./api/registration');
+app.use('/api/registration', registrationApi);
+
+//Stripe registration webhook
+const registrationWebhook = require('./api/registrationWebhook');
+app.use('/api/registration', registrationWebhook);
+
 // Setup Sentry
 // Note 1: This needs to happen before other express requires
 // Note 2: this doesn't use instrument.js file but log.js

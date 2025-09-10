@@ -1,13 +1,19 @@
 // ===============================
 // FILE: src/containers/ShipperSignupPage/ShipperSignupPage.js
-// DESCRIPTION: Signup page for Customers/Shippers using Sharetribe Flex components.
+// DESCRIPTION: Signup page for Customers/Shippers using Sharetribe Flex components
+// with a $10 Stripe paid-activation step prior to account creation.
+// Requirements:
+//  - Backend route POST /api/registration/create-intent -> { clientSecret, amount, currency }
+//  - <Elements stripe={...}> provider is mounted near app root
+//  - @stripe/react-stripe-js and @stripe/stripe-js installed
 // ===============================
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { Form as FinalForm } from 'react-final-form';
 import { FORM_ERROR } from 'final-form';
 import arrayMutators from 'final-form-arrays';
 
 import * as validators from '../../util/validators';
+import RegistrationPayment from '../../components/RegistrationPayment/RegistrationPayment';
 
 import {
   Page,
@@ -49,51 +55,63 @@ const ORIGIN_REGION_OPTIONS = [
 const CONTACT_PREFS = [{ key: 'email', label: 'Email' }, { key: 'phone', label: 'Phone' }];
 
 export const ShipperSignupPageComponent = props => {
-  const onSubmit = values => {
-    const {
-      email,
-      password,
-      givenName,
-      familyName,
-      phone,
-      userType, // individual | business
-      companyName, // optional for business
-      originRegion,
-      originCities, // free text list
-      typicalItems, // free text
-      contactPreference,
-      marketingOptIn,
-      acceptTos,
-    } = values;
+  // Two-phase flow: details -> pay -> create account
+  const [phase, setPhase] = useState('form'); // 'form' | 'pay'
+  const [snapshot, setSnapshot] = useState(null);
+  const [submitErrorInline, setSubmitErrorInline] = useState(null);
 
+  const onSubmitFormPhase = values => {
+    const { acceptTos } = values;
     if (!acceptTos) {
       return { [FORM_ERROR]: 'Please accept the Terms of Service.' };
     }
+    setSnapshot(values);
+    setPhase('pay');
+    return undefined;
+  };
 
-    const profile = {
-      firstName: givenName,
-      lastName: familyName,
-      displayName: `${givenName} ${familyName}`.trim(),
-      abbreviatedName: `${givenName?.[0] || ''}${familyName?.[0] || ''}`.toUpperCase(),
-      publicData: {
-        userType: 'shipper',
-        shipperProfile: {
-          accountType: userType || 'individual',
-          companyName: userType === 'business' ? companyName || null : null,
-          originRegion,
-          originCities,
-          typicalItems,
-          contactPreference: contactPreference || 'email',
-          marketingOptIn: !!marketingOptIn,
+  const onPaid = async paymentIntent => {
+    try {
+      const v = snapshot || {};
+      const profile = {
+        firstName: v.givenName,
+        lastName: v.familyName,
+        displayName: `${v.givenName} ${v.familyName}`.trim(),
+        abbreviatedName: `${v.givenName?.[0] || ''}${v.familyName?.[0] || ''}`.toUpperCase(),
+        publicData: {
+          userType: 'shipper',
+          registrationPaid: true,
+          shipperProfile: {
+            accountType: v.userType || 'individual',
+            companyName: v.userType === 'business' ? v.companyName || null : null,
+            originRegion: v.originRegion,
+            originCities: v.originCities,
+            typicalItems: v.typicalItems,
+            contactPreference: v.contactPreference || 'email',
+            marketingOptIn: !!v.marketingOptIn,
+          },
         },
-      },
-      protectedData: {
-        phone,
-      },
-    };
+        protectedData: { phone: v.phone },
+      };
 
-    const payload = { email, password, marketplace: 'flex', profile };
-    return props.onSignup ? props.onSignup(payload) : Promise.resolve();
+      const payload = {
+        email: v.email,
+        password: v.password,
+        marketplace: 'flex',
+        profile,
+        metadata: {
+          registrationPI: paymentIntent?.id,
+          registrationAmount: paymentIntent?.amount,
+          registrationCurrency: paymentIntent?.currency,
+          registrationAt: new Date().toISOString(),
+        },
+      };
+
+      await props.onSignup?.(payload);
+    } catch (e) {
+      setSubmitErrorInline(e);
+      setPhase('pay');
+    }
   };
 
   const companyPlaceholder = useMemo(() => 'Company (if business shipper)', []);
@@ -137,210 +155,218 @@ export const ShipperSignupPageComponent = props => {
                 <span className={css.stepNum}>1</span> Create your account
               </li>
               <li>
-                <span className={css.stepNum}>2</span> Post your shipment details
+                <span className={css.stepNum}>2</span> Add shipping preferences
               </li>
               <li>
-                <span className={css.stepNum}>3</span> Compare bids & choose a carrier
+                <span className={css.stepNum}>3</span> Pay one-time activation fee ($10)
               </li>
               <li>
-                <span className={css.stepNum}>4</span> Track delivery and confirm completion
+                <span className={css.stepNum}>4</span> Post a shipment & compare bids
               </li>
             </ol>
           </div>
-
-          <div className={css.trustRow}>
-            <div className={css.trustItem}>
-              <IconReviewStar className={css.starIcon} /> Verified carriers
-            </div>
-            <div className={css.trustItem}>
-              <IconReviewStar className={css.starIcon} /> Buyer protection
-            </div>
-            <div className={css.trustItem}>
-              <IconReviewStar className={css.starIcon} /> 24/7 support
-            </div>
-          </div>
         </section>
 
-        {/* RIGHT: Form panel */}
+        {/* RIGHT: Form panel (or payment step) */}
         <section className={css.formPanel} aria-label="Shipper signup form">
           <div className={css.formCard}>
-            <FinalForm
-              mutators={{ ...arrayMutators }}
-              onSubmit={onSubmit}
-              render={({ handleSubmit, invalid, submitting, submitError, values }) => (
-                <Form onSubmit={handleSubmit} className={css.form}>
-                  {submitError ? <div className={css.submitError}>{submitError}</div> : null}
+            {phase === 'form' && (
+              <FinalForm
+                mutators={{ ...arrayMutators }}
+                onSubmit={onSubmitFormPhase}
+                render={({ handleSubmit, invalid, submitting, submitError, values }) => (
+                  <Form onSubmit={handleSubmit} className={css.form}>
+                    {submitError ? <div className={css.submitError}>{submitError}</div> : null}
 
-                  {/* Identity */}
-                  <div className={css.twoCol}>
-                    <FieldTextInput
-                      id="givenName"
-                      name="givenName"
-                      type="text"
-                      label="First name"
-                      placeholder="Jane"
-                      validate={required('First name is required')}
-                    />
-                    <FieldTextInput
-                      id="familyName"
-                      name="familyName"
-                      type="text"
-                      label="Last name"
-                      placeholder="Smith"
-                      validate={required('Last name is required')}
-                    />
-                  </div>
+                    {/* Identity */}
+                    <div className={css.twoCol}>
+                      <FieldTextInput
+                        id="givenName"
+                        name="givenName"
+                        type="text"
+                        label="First name"
+                        placeholder="Jane"
+                        validate={required('First name is required')}
+                      />
+                      <FieldTextInput
+                        id="familyName"
+                        name="familyName"
+                        type="text"
+                        label="Last name"
+                        placeholder="Smith"
+                        validate={required('Last name is required')}
+                      />
+                    </div>
 
-                  {/* Account type */}
-                  <div className={css.twoCol}>
-                    <FieldSelect
-                      id="userType"
-                      name="userType"
-                      label="I am signing up as"
-                      validate={required('Please choose one')}
-                    >
-                      <option value="" disabled>
-                        Select one
-                      </option>
-                      {USER_TYPE_OPTIONS.map(o => (
-                        <option key={o.key} value={o.key}>
-                          {o.label}
+                    {/* Account type */}
+                    <div className={css.twoCol}>
+                      <FieldSelect
+                        id="userType"
+                        name="userType"
+                        label="I am signing up as"
+                        validate={required('Please choose one')}
+                      >
+                        <option value="" disabled>
+                          Select one
                         </option>
-                      ))}
-                    </FieldSelect>
+                        {USER_TYPE_OPTIONS.map(o => (
+                          <option key={o.key} value={o.key}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </FieldSelect>
+                      <FieldTextInput
+                        id="companyName"
+                        name="companyName"
+                        type="text"
+                        label="Company name (if business)"
+                        placeholder={companyPlaceholder}
+                      />
+                    </div>
 
-                    <FieldTextInput
-                      id="companyName"
-                      name="companyName"
-                      type="text"
-                      label="Company name (if business)"
-                      placeholder={companyPlaceholder}
-                    />
-                  </div>
-
-                  {/* Contact */}
-                  <div className={css.twoCol}>
-                    <FieldPhoneNumberInput
-                      id="phone"
-                      name="phone"
-                      label="Phone number"
-                      placeholder="(555) 555-5555"
-                    />
-                    <FieldSelect
-                      id="contactPreference"
-                      name="contactPreference"
-                      label="Preferred contact"
-                    >
-                      <option value="" disabled>
-                        Select preference
-                      </option>
-                      {CONTACT_PREFS.map(o => (
-                        <option key={o.key} value={o.key}>
-                          {o.label}
+                    {/* Contact */}
+                    <div className={css.twoCol}>
+                      <FieldPhoneNumberInput
+                        id="phone"
+                        name="phone"
+                        label="Phone number"
+                        placeholder="(555) 555-5555"
+                      />
+                      <FieldSelect
+                        id="contactPreference"
+                        name="contactPreference"
+                        label="Preferred contact"
+                      >
+                        <option value="" disabled>
+                          Select preference
                         </option>
-                      ))}
-                    </FieldSelect>
-                  </div>
+                        {CONTACT_PREFS.map(o => (
+                          <option key={o.key} value={o.key}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </FieldSelect>
+                    </div>
 
-                  {/* Shipping profile */}
-                  <div className={css.twoCol}>
-                    <FieldSelect
-                      id="originRegion"
-                      name="originRegion"
-                      label="Where do you primarily ship from?"
-                      validate={required('Please select a region')}
-                    >
-                      <option value="" disabled>
-                        Select a region
-                      </option>
-                      {ORIGIN_REGION_OPTIONS.map(o => (
-                        <option key={o.key} value={o.key}>
-                          {o.label}
+                    {/* Shipping profile */}
+                    <div className={css.twoCol}>
+                      <FieldSelect
+                        id="originRegion"
+                        name="originRegion"
+                        label="Where do you primarily ship from?"
+                        validate={required('Please select a region')}
+                      >
+                        <option value="" disabled>
+                          Select a region
                         </option>
-                      ))}
-                    </FieldSelect>
+                        {ORIGIN_REGION_OPTIONS.map(o => (
+                          <option key={o.key} value={o.key}>
+                            {o.label}
+                          </option>
+                        ))}
+                      </FieldSelect>
+                      <FieldTextInput
+                        id="originCities"
+                        name="originCities"
+                        type="text"
+                        label="Cities/areas (comma-separated)"
+                        placeholder="e.g., Los Angeles, Phoenix, Las Vegas"
+                      />
+                    </div>
+
                     <FieldTextInput
-                      id="originCities"
-                      name="originCities"
+                      id="typicalItems"
+                      name="typicalItems"
                       type="text"
-                      label="Cities/areas (comma-separated)"
-                      placeholder="e.g., Los Angeles, Phoenix, Las Vegas"
+                      label="What do you typically ship?"
+                      placeholder="e.g., furniture, motorcycles, equipment, boats"
                     />
-                  </div>
 
-                  <FieldTextInput
-                    id="typicalItems"
-                    name="typicalItems"
-                    type="text"
-                    label="What do you typically ship?"
-                    placeholder="e.g., furniture, motorcycles, equipment, boats"
-                  />
+                    {/* Credentials */}
+                    <div className={css.twoCol}>
+                      <FieldTextInput
+                        id="email"
+                        name="email"
+                        type="email"
+                        label="Email"
+                        placeholder="you@example.com"
+                        validate={validators.composeValidators(emailRequired, emailValid)}
+                      />
+                      <FieldTextInput
+                        id="password"
+                        name="password"
+                        type="password"
+                        label="Password"
+                        placeholder="Minimum 8 characters"
+                        autoComplete="new-password"
+                        validate={validators.composeValidators(passwordMinLen, passwordMaxLen)}
+                      />
+                    </div>
 
-                  {/* Credentials */}
-                  <div className={css.twoCol}>
-                    <FieldTextInput
-                      id="email"
-                      name="email"
-                      type="email"
-                      label="Email"
-                      placeholder="you@example.com"
-                      validate={validators.composeValidators(emailRequired, emailValid)}
-                    />
-                    <FieldTextInput
-                      id="password"
-                      name="password"
-                      type="password"
-                      label="Password"
-                      placeholder="Minimum 8 characters"
-                      autoComplete="new-password"
-                      validate={validators.composeValidators(passwordMinLen, passwordMaxLen)}
-                    />
-                  </div>
+                    {/* Consents */}
+                    <div className={css.legalBlock}>
+                      <FieldCheckbox
+                        id="marketingOptIn"
+                        name="marketingOptIn"
+                        label="Send me helpful tips and marketplace updates"
+                      />
+                      <FieldCheckbox
+                        id="acceptTos"
+                        name="acceptTos"
+                        label={
+                          <span>
+                            I agree to the{' '}
+                            <a href="/terms" target="_blank" rel="noreferrer">
+                              Terms
+                            </a>{' '}
+                            and{' '}
+                            <a href="/privacy" target="_blank" rel="noreferrer">
+                              Privacy Policy
+                            </a>
+                            .
+                          </span>
+                        }
+                      />
+                    </div>
 
-                  {/* Consents */}
-                  <div className={css.legalBlock}>
-                    <FieldCheckbox
-                      id="marketingOptIn"
-                      name="marketingOptIn"
-                      label="Send me helpful tips and marketplace updates"
-                    />
-                    <FieldCheckbox
-                      id="acceptTos"
-                      name="acceptTos"
-                      label={
-                        <span>
-                          I agree to the{' '}
-                          <a href="/terms" target="_blank" rel="noreferrer">
-                            Terms
-                          </a>{' '}
-                          and{' '}
-                          <a href="/privacy" target="_blank" rel="noreferrer">
-                            Privacy Policy
-                          </a>
-                          .
-                        </span>
-                      }
-                    />
-                  </div>
+                    {/* Submit -> proceeds to payment */}
+                    <PrimaryButton
+                      type="submit"
+                      disabled={invalid || submitting}
+                      className={css.submitBtn}
+                    >
+                      Continue to payment
+                    </PrimaryButton>
 
-                  {/* Submit */}
-                  <PrimaryButton
-                    type="submit"
-                    disabled={invalid || submitting}
-                    className={css.submitBtn}
-                  >
-                    Create shipper account
-                  </PrimaryButton>
+                    <p className={css.altAction}>
+                      Already have an account?{' '}
+                      <InlineTextButton onClick={() => props.history.push('/login')}>
+                        Log in
+                      </InlineTextButton>
+                    </p>
+                  </Form>
+                )}
+              />
+            )}
 
-                  <p className={css.altAction}>
-                    Already have an account?{' '}
-                    <InlineTextButton onClick={() => props.history.push('/login')}>
-                      Log in
-                    </InlineTextButton>
-                  </p>
-                </Form>
-              )}
-            />
+            {phase === 'pay' && (
+              <div className={css.paymentCard}>
+                {submitErrorInline ? (
+                  <div className={css.submitError}>{submitErrorInline.message}</div>
+                ) : null}
+                <RegistrationPayment
+                  email={snapshot?.email}
+                  userType="shipper"
+                  onPaid={onPaid}
+                  onError={setSubmitErrorInline}
+                />
+                <p className={css.backLinkWrap}>
+                  <InlineTextButton onClick={() => setPhase('form')}>
+                    ← Back to details
+                  </InlineTextButton>
+                </p>
+              </div>
+            )}
           </div>
         </section>
       </div>

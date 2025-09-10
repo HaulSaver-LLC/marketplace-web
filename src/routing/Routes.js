@@ -1,3 +1,7 @@
+// ===============================
+// FILE: src/containers/Routes.js
+// DESCRIPTION: Application routes with auth and registrationPaid enforcement.
+// ===============================
 import React, { Component } from 'react';
 import { compose } from 'redux';
 import { connect } from 'react-redux';
@@ -13,19 +17,45 @@ import { locationChanged } from '../ducks/routing.duck';
 
 import { NamedRedirect } from '../components';
 import NotFoundPage from '../containers/NotFoundPage/NotFoundPage';
-
 import LoadableComponentErrorBoundary from './LoadableComponentErrorBoundary/LoadableComponentErrorBoundary';
 
+// --- helpers ---
 const isBanned = currentUser => {
   const isBrowser = typeof window !== 'undefined';
-  // Future todo: currentUser?.attributes?.state === 'banned'
   return isBrowser && currentUser?.attributes?.banned === true;
 };
 
+// Check registrationPaid (support publicData, protectedData, metadata just in case)
+const isRegistrationPaid = currentUser => {
+  const profile = currentUser?.attributes?.profile || {};
+  const pub = profile.publicData || {};
+  const prot = profile.protectedData || {};
+  const meta = profile.metadata || {};
+  return (
+    pub.registrationPaid === true ||
+    prot.registrationPaid === true ||
+    meta.registrationPaid === true
+  );
+};
+
+// Decide if a route’s component can render based on route flags and user state
 const canShowComponent = props => {
   const { isAuthenticated, currentUser, route } = props;
-  const { auth } = route;
-  return !auth || (isAuthenticated && !isBanned(currentUser));
+  const { auth, requiresPaid } = route;
+
+  // 1) Auth gate
+  if (auth) {
+    if (!isAuthenticated) return false;
+    if (isBanned(currentUser)) return false;
+  }
+
+  // 2) Registration fee gate
+  if (requiresPaid) {
+    if (!currentUser?.id) return false;
+    if (!isRegistrationPaid(currentUser)) return false;
+  }
+
+  return true;
 };
 
 const callLoadData = props => {
@@ -38,7 +68,6 @@ const callLoadData = props => {
     dispatch(loadData(match.params, location.search, config))
       .then(() => {
         if (props.logLoadDataCalls) {
-          // This gives good input for debugging issues on live environments, but with test it's not needed.
           console.log(`loadData success for ${name} route`);
         }
       })
@@ -50,37 +79,15 @@ const callLoadData = props => {
 
 const setPageScrollPosition = (location, delayed) => {
   if (!location.hash) {
-    // No hash, scroll to top
-    window.scroll({
-      top: 0,
-      left: 0,
-    });
+    window.scroll({ top: 0, left: 0 });
   } else {
     const el = document.querySelector(location.hash);
     if (el) {
-      // Found element from the current page with the given fragment identifier,
-      // scrolling to that element.
-      //
-      // NOTE: This only works on in-app navigation within the same page.
-      // If smooth scrolling is needed between different pages, one needs to wait
-      //   1. loadData fetch and
-      //   2. code-chunk fetch
-      // before making el.scrollIntoView call.
-
-      el.scrollIntoView({
-        block: 'start',
-        behavior: 'smooth',
-      });
+      el.scrollIntoView({ block: 'start', behavior: 'smooth' });
     } else {
-      // A naive attempt to make a delayed call to scrollIntoView
-      // Note: 300 milliseconds might not be enough, but adding too much delay
-      // might affect user initiated scrolling.
       delayed = window.setTimeout(() => {
         const reTry = document.querySelector(location.hash);
-        reTry?.scrollIntoView({
-          block: 'start',
-          behavior: 'smooth',
-        });
+        reTry?.scrollIntoView({ block: 'start', behavior: 'smooth' });
       }, 300);
     }
   }
@@ -92,47 +99,17 @@ const handleLocationChanged = (dispatch, location, routeConfiguration, delayed) 
   dispatch(locationChanged(location, path));
 };
 
-/**
- * RouteComponentRenderer handles loadData calls on client-side.
- * It also checks authentication and redirects unauthenticated users
- * away from routes that are for authenticated users only
- * (aka "auth: true" is set in routeConfiguration.js)
- *
- * This component is a container: it needs to be connected to Redux.
- *
- * @component
- * @param {Object} props - The props
- * @param {boolean} props.isAuthenticated - Whether the user is authenticated
- * @param {boolean} props.logoutInProgress - Whether the logout is in progress
- * @param {propTypes.currentUser} props.currentUser - The current user
- * @param {propTypes.route} props.route - The route
- * @param {Array<propTypes.route} props.routeConfiguration - The route configuration
- * @param {Object} props.match - The match
- * @param {Object} props.match.params - The match params
- * @param {string} props.match.url - The match url
- * @param {Object} props.location - The location
- * @param {Object} props.location.search - The location search
- * @param {Object} props.staticContext - The static context
- * @param {Function} props.dispatch - The dispatch function of
- * @returns {JSX.Element} The RouteComponentRenderer component
- */
 class RouteComponentRenderer extends Component {
   componentDidMount() {
     const { dispatch, location, routeConfiguration } = this.props;
     this.delayed = null;
-    // Calling loadData on initial rendering (on client side).
     callLoadData(this.props);
     handleLocationChanged(dispatch, location, routeConfiguration, this.delayed);
   }
 
   componentDidUpdate(prevProps) {
     const { dispatch, location, routeConfiguration } = this.props;
-    // Call for handleLocationChanged affects store/state
-    // and it generates an unnecessary update.
     if (prevProps.location !== this.props.location) {
-      // Calling loadData after initial rendering (on client side).
-      // This makes it possible to use loadData as default client side data loading technique.
-      // However it is better to fetch data before location change to avoid "Loading data" state.
       callLoadData(this.props);
       handleLocationChanged(dispatch, location, routeConfiguration, this.delayed);
     }
@@ -146,16 +123,21 @@ class RouteComponentRenderer extends Component {
 
   render() {
     const { route, match, location, staticContext = {}, currentUser } = this.props;
-    const { component: RouteComponent, authPage = 'SignupPage', extraProps } = route;
+    const {
+      component: RouteComponent,
+      authPage = 'SignupPage', // where to send unauthenticated users
+      paidPage = 'PricingPage', // where to send unpaid users (change to your activation page if needed)
+      extraProps,
+      requiresPaid,
+    } = route;
+
     const canShow = canShowComponent(this.props);
-    if (!canShow) {
-      staticContext.unauthorized = true;
-    }
+    if (!canShow) staticContext.unauthorized = true;
 
     const hasCurrentUser = !!currentUser?.id;
-    const restrictedPageWithCurrentUser = !canShow && hasCurrentUser;
-    // Banned users are redirected to LandingPage
-    const isBannedFromAuthPages = restrictedPageWithCurrentUser && isBanned(currentUser);
+    const restrictedWithUser = !canShow && hasCurrentUser;
+    const banned = restrictedWithUser && isBanned(currentUser);
+
     return canShow ? (
       <LoadableComponentErrorBoundary>
         <RouteComponent
@@ -165,8 +147,13 @@ class RouteComponentRenderer extends Component {
           {...extraProps}
         />
       </LoadableComponentErrorBoundary>
-    ) : isBannedFromAuthPages ? (
+    ) : banned ? (
       <NamedRedirect name="LandingPage" />
+    ) : requiresPaid && hasCurrentUser && !isRegistrationPaid(currentUser) ? (
+      <NamedRedirect
+        name={paidPage}
+        state={{ from: `${location.pathname}${location.search}${location.hash}` }}
+      />
     ) : (
       <NamedRedirect
         name={authPage}
@@ -183,17 +170,7 @@ const mapStateToProps = state => {
 };
 const RouteComponentContainer = compose(connect(mapStateToProps))(RouteComponentRenderer);
 
-/**
- * Routes component creates React Router rendering setup.
- * It needs routeConfiguration (named as "routes") through props.
- * Using that configuration it creates navigation on top of page-level
- * components. Essentially, it's something like:
- * <Switch>
- *   <Route render={pageA} />
- *   <Route render={pageB} />
- * </Switch>
- */
-const Routes = (props, context) => {
+const Routes = props => {
   const routeConfiguration = useRouteConfiguration();
   const config = useConfiguration();
   const { isAuthenticated, logoutInProgress, logLoadDataCalls } = props;
@@ -207,9 +184,6 @@ const Routes = (props, context) => {
       config,
       logLoadDataCalls,
     };
-
-    // By default, our routes are exact.
-    // https://reacttraining.com/react-router/web/api/Route/exact-bool
     const isExact = route.exact != null ? route.exact : true;
     return (
       <Route
