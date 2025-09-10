@@ -24,6 +24,10 @@ import { IncludeScripts } from './util/includeScripts';
 
 import { MaintenanceMode } from './components';
 
+//Mount Stripe provider at app root
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+
 // routing
 import routeConfiguration from './routing/routeConfiguration';
 import Routes from './routing/Routes';
@@ -69,6 +73,12 @@ import defaultMessages from './translations/en.json';
 // I.e. remove "const messagesInLocale" and add import for the correct locale:
 // import messagesInLocale from './translations/fr.json';
 const messagesInLocale = {};
+
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY);
+
+export default function App() {
+  return <Elements stripe={stripePromise}>{/* your providers, store, and <Routes /> */}</Elements>;
+}
 
 // If translation key is missing from `messagesInLocale` (e.g. fr.json),
 // corresponding key will be added to messages from `defaultMessages` (en.json)
