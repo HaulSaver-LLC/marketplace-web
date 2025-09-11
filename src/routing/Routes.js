@@ -140,7 +140,8 @@ class RouteComponentRenderer extends Component {
 
   componentWillUnmount() {
     if (this.delayed) {
-      window.clearTimeout(this.resetTimeoutId);
+      // Fix: clear the correct timeout id
+      window.clearTimeout(this.delayed);
     }
   }
 
@@ -156,6 +157,16 @@ class RouteComponentRenderer extends Component {
     const restrictedPageWithCurrentUser = !canShow && hasCurrentUser;
     // Banned users are redirected to LandingPage
     const isBannedFromAuthPages = restrictedPageWithCurrentUser && isBanned(currentUser);
+
+    // --- Registration fee gate: block verification until paid ---
+    // Requires protectedData.registrationPaid === true on the user's profile
+    const isVerificationRoute = route?.name === 'RegisterActivatePage';
+    const registrationPaid = !!currentUser?.attributes?.profile?.protectedData?.registrationPaid;
+    if (isVerificationRoute && !registrationPaid) {
+      return <NamedRedirect name="RegistrationPaymentPage" />;
+    }
+    // ------------------------------------------------------------
+
     return canShow ? (
       <LoadableComponentErrorBoundary>
         <RouteComponent

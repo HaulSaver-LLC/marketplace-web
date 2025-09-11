@@ -144,3 +144,5 @@ export const transitionPrivileged = body => {
 export const createUserWithIdp = body => {
   return post('/api/auth/create-user-with-idp', body);
 };
+
+console.log('SDK clientId', process.env.REACT_APP_SHARETRIBE_SDK_CLIENT_ID);

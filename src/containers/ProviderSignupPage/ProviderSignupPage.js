@@ -1,8 +1,11 @@
 // ===============================
 // FILE: src/containers/ProviderSignupPage/ProviderSignupPage.js
-// DESCRIPTION: Provider/Carrier signup with U.S. compliance attestations.
+// DESCRIPTION: U.S.-ONLY Provider/Carrier signup with FMCSA-focused compliance checks.
+// NOTE: After successful signup, this redirects to /register/payment
+//       for the $10 registration fee (Stripe Payment Intent flow).
 // ===============================
 import React, { useMemo } from 'react';
+import { withRouter } from 'react-router-dom';
 import { Form as FinalForm } from 'react-final-form';
 import { FORM_ERROR } from 'final-form';
 import arrayMutators from 'final-form-arrays';
@@ -26,6 +29,7 @@ import {
 
 import css from './ProviderSignupPage.module.css';
 
+// ---------- Constants ----------
 const VEHICLE_OPTIONS = [
   { key: 'pickup', label: 'Pickup (½–1 ton)' },
   { key: 'flatbed', label: 'Flatbed' },
@@ -39,19 +43,79 @@ const VEHICLE_OPTIONS = [
 
 // U.S. operating scope (affects whether MC is required)
 const AUTHORITY_SCOPE = [
-  { key: 'interstate', label: 'Interstate (crosses state lines)' },
+  { key: 'interstate', label: 'Interstate (crosses state lines, MC authority required)' },
   { key: 'intrastate', label: 'Intrastate only (single state)' },
 ];
 
-const REGION_OPTIONS = [
-  { key: 'national', label: 'Nationwide' },
-  { key: 'luzon', label: 'Luzon' },
-  { key: 'visayas', label: 'Visayas' },
-  { key: 'mindanao', label: 'Mindanao' },
-  { key: 'custom', label: 'Custom (specify cities below)' },
+// U.S. service area choices
+const US_SERVICE_AREA = [
+  { key: 'nationwide', label: 'Nationwide (all U.S. states)' },
+  { key: 'contiguous', label: 'Contiguous U.S. (lower 48)' },
+  { key: 'specific_states', label: 'Specific states (enter 2-letter codes)' },
 ];
 
-// --- Conditional validators helpers
+// Acceptable 2-letter state/territory codes (all caps)
+const US_STATE_CODES = new Set([
+  'AL',
+  'AK',
+  'AZ',
+  'AR',
+  'CA',
+  'CO',
+  'CT',
+  'DE',
+  'FL',
+  'GA',
+  'HI',
+  'ID',
+  'IL',
+  'IN',
+  'IA',
+  'KS',
+  'KY',
+  'LA',
+  'ME',
+  'MD',
+  'MA',
+  'MI',
+  'MN',
+  'MS',
+  'MO',
+  'MT',
+  'NE',
+  'NV',
+  'NH',
+  'NJ',
+  'NM',
+  'NY',
+  'NC',
+  'ND',
+  'OH',
+  'OK',
+  'OR',
+  'PA',
+  'RI',
+  'SC',
+  'SD',
+  'TN',
+  'TX',
+  'UT',
+  'VT',
+  'VA',
+  'WA',
+  'WV',
+  'WI',
+  'WY',
+  // territories (optional – keep if you service)
+  'DC',
+  'PR',
+  'GU',
+  'VI',
+  'AS',
+  'MP',
+]);
+
+// ---------- Local validator helpers ----------
 const required = msg => validators.required(msg);
 const requiredIf = (msg, predicate) => (value, allValues) =>
   predicate(allValues) ? validators.required(msg)(value) : undefined;
@@ -61,14 +125,93 @@ const emailValid = validators.emailFormatValid('Enter a valid email');
 const passwordMinLen = validators.minLength(8, 'Password must be at least 8 characters');
 const passwordMaxLen = validators.maxLength(64, 'Password is too long');
 
-// Predicates
+// Cross-field predicates
 const isInterstate = v => v?.authorityScope === 'interstate';
 const saysHasUSDOT = v => !!v?.hasUSDOT;
 const saysHasMC = v => !!v?.hasMC;
-const needsMC = v => isInterstate(v) && saysHasMC(v);
+const needsMC = v => isInterstate(v) && (!!v?.hasMC || true); // interstate implies MC required
+
+// DOT must be 6–8 digits (FMCSA range varies; accept 6–8)
+const dotPattern = /^\d{6,8}$/;
+// MC numbers are typically 6–7 digits; accept with or without "MC-" prefix
+const mcPattern = /^(MC-)?\d{6,7}$/;
+
+// Numeric minimums
+const MIN_AUTO_LIAB = 750000;
+const MIN_CARGO_LIAB = 100000;
+
+// Helpers
+const onlyDigits = s => (s || '').replace(/\D+/g, '');
+const parseStatesCSV = s =>
+  (s || '')
+    .toUpperCase()
+    .split(/[\s,;/]+/)
+    .filter(Boolean);
+
+// ---------- Form-level validation for U.S. compliance ----------
+const validateForm = values => {
+  const errors = {};
+
+  // Interstate requires MC authority + number
+  if (isInterstate(values)) {
+    if (!values.hasMC) {
+      errors.hasMC = 'Interstate carriers must have MC authority.';
+    }
+    const mcRaw = (values.mc_number || '').toUpperCase();
+    const mcNorm = mcRaw.startsWith('MC-') ? mcRaw : `MC-${onlyDigits(mcRaw)}`;
+    if (!mcPattern.test(mcNorm)) {
+      errors.mc_number = 'Enter a valid MC (e.g., MC-123456).';
+    }
+  }
+
+  // DOT number format if user says they have one
+  if (saysHasUSDOT(values)) {
+    const d = onlyDigits(values.dot_number);
+    if (!dotPattern.test(d)) {
+      errors.dot_number = 'Enter a valid USDOT (6–8 digits).';
+    }
+  }
+
+  // Insurance minimums
+  const auto = Number(values.autoLiabilityLimit || 0);
+  const cargo = Number(values.cargoLiabilityLimit || 0);
+  if (auto && auto < MIN_AUTO_LIAB) {
+    errors.autoLiabilityLimit = `Auto liability must be at least $${MIN_AUTO_LIAB.toLocaleString()}.`;
+  }
+  if (cargo && cargo < MIN_CARGO_LIAB) {
+    errors.cargoLiabilityLimit = `Cargo coverage must be at least $${MIN_CARGO_LIAB.toLocaleString()}.`;
+  }
+
+  // Policy expiration cannot be in the past
+  if (values.insurancePolicyExpires) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const exp = new Date(values.insurancePolicyExpires);
+    if (exp < today) {
+      errors.insurancePolicyExpires = 'Policy expiration date cannot be in the past.';
+    }
+  }
+
+  // If specific states selected, require valid 2-letter codes
+  if (values.serviceArea === 'specific_states') {
+    const codes = parseStatesCSV(values.serviceStates);
+    if (!codes.length) {
+      errors.serviceStates = 'Enter at least one 2-letter state code (e.g., AZ, NM, TX).';
+    } else {
+      const invalid = codes.filter(c => !US_STATE_CODES.has(c));
+      if (invalid.length) {
+        errors.serviceStates = `Invalid state codes: ${invalid.join(
+          ', '
+        )}. Use 2-letter codes like CA, NV.`;
+      }
+    }
+  }
+
+  return errors;
+};
 
 export const ProviderSignupPageComponent = props => {
-  const onSubmit = values => {
+  const onSubmit = async values => {
     const {
       email,
       password,
@@ -76,15 +219,16 @@ export const ProviderSignupPageComponent = props => {
       familyName,
       phone,
       companyName,
-      // existing
+
+      // Compliance & ops
       dot_number,
       mc_number,
       vehicleType,
-      serviceRegion,
-      serviceCities,
+      serviceArea, // 'nationwide' | 'contiguous' | 'specific_states'
+      serviceStates, // CSV list if specific_states
       acceptTos,
 
-      // NEW (US compliance)
+      // U.S. compliance fields
       authorityScope,
       hasUSDOT,
       hasMC,
@@ -109,36 +253,56 @@ export const ProviderSignupPageComponent = props => {
     if (!consentFMCSADataPull)
       return { [FORM_ERROR]: 'Consent to retrieve FMCSA safety/authority data is required.' };
 
+    // Normalize MC for storage if provided
+    const mcRaw = (mc_number || '').toUpperCase();
+    const mcNorm = mcRaw ? (mcRaw.startsWith('MC-') ? mcRaw : `MC-${onlyDigits(mcRaw)}`) : null;
+
+    // Derive service region text for display, keep structured fields
+    let serviceRegionLabel = 'Nationwide (US)';
+    let serviceCities = null;
+    if (serviceArea === 'contiguous') {
+      serviceRegionLabel = 'Contiguous U.S. (Lower 48)';
+    } else if (serviceArea === 'specific_states') {
+      const codes = parseStatesCSV(serviceStates).join(', ');
+      serviceRegionLabel = 'Specific states';
+      serviceCities = codes; // reuse same public field label (kept for backwards compatibility in template)
+    }
+
     // Build profile payload
     const profile = {
       firstName: givenName,
       lastName: familyName,
       displayName: `${givenName} ${familyName}`.trim(),
-      abbreviatedName: `${givenName?.[0] || ''}${familyName?.[0] || ''}`.toUpperCase(),
+      abbreviatedName: `${(givenName || '').slice(0, 1)}${(familyName || '').slice(
+        0,
+        1
+      )}`.toUpperCase(),
       publicData: {
         userType: 'provider',
         companyName,
         vehicleType,
-        serviceRegion,
-        serviceCities,
 
-        // Keep legacy fields for backwards compatibility
+        // Back-compat fields that some components expect:
+        serviceRegion: serviceRegionLabel,
+        serviceCities, // comma-separated 2-letter codes if specific
+
+        // Legacy DOT/MC mirrors (keep)
         dot_number: dot_number || null,
-        mc_number: mc_number || null,
+        mc_number: mcNorm,
 
         // Structured U.S. compliance block
         usCompliance: {
           authorityScope, // 'interstate' | 'intrastate'
           hasUSDOT: !!hasUSDOT,
           usdot_number: hasUSDOT ? dot_number || null : null,
-          hasMC: !!hasMC,
-          mc_number: hasMC ? mc_number || null : null,
+          hasMC: !!hasMC || isInterstate(values), // interstate implies MC
+          mc_number: hasMC || isInterstate(values) ? mcNorm : null,
           insurance: {
             autoLiabilityLimit: autoLiabilityLimit || null, // e.g. 1000000
             cargoLiabilityLimit: cargoLiabilityLimit || null, // e.g. 100000
             carrierName: insuranceCarrierName || null,
             policyExpires: insurancePolicyExpires || null, // ISO date
-            attestMinAutoLiability750k: Number(autoLiabilityLimit || 0) >= 750000,
+            attestMinAutoLiability750k: Number(autoLiabilityLimit || 0) >= MIN_AUTO_LIAB,
           },
           attestations: {
             w9Attestation: !!w9Attestation,
@@ -147,6 +311,10 @@ export const ProviderSignupPageComponent = props => {
             eldCompliant: !!eldCompliant,
             hazmatEndorsement: !!hazmatEndorsement,
           },
+          serviceArea: {
+            type: serviceArea, // 'nationwide' | 'contiguous' | 'specific_states'
+            states: serviceArea === 'specific_states' ? parseStatesCSV(serviceStates) : null,
+          },
         },
       },
       protectedData: {
@@ -154,20 +322,39 @@ export const ProviderSignupPageComponent = props => {
       },
     };
 
+    // Sharetribe signup payload
     const payload = { email, password, marketplace: 'flex', profile };
-    return props.onSignup ? props.onSignup(payload) : Promise.resolve();
+
+    try {
+      // onSignup should create the user + authenticate the session
+      if (props.onSignup) {
+        await props.onSignup(payload);
+      }
+      // After successful signup -> go to payment step
+      props.history.push('/register/payment');
+      return undefined;
+    } catch (e) {
+      const message =
+        e?.message ||
+        e?.errors?.[0]?.message ||
+        'Signup failed. Please review your details and try again.';
+      return { [FORM_ERROR]: message };
+    }
   };
 
   const companyPlaceholder = useMemo(() => 'Your company (optional if owner-operator)', []);
 
   return (
-    <Page className={css.root} title="Become a Provider">
+    <Page className={css.root} title="Become a Provider (U.S.)">
       <div className={css.hero}>
         <H1 as="h1" rootClassName={css.headline}>
-          Become a Carrier on HaulSaver
+          Become a Carrier on HaulSaver (U.S.)
         </H1>
         <p className={css.subhead}>
-          Join and start bidding on shipments. U.S. compliance-ready signup with quick verification.
+          U.S.-only signup with FMCSA-focused compliance checks and quick verification.
+          <br />
+          <strong>Note:</strong> A one-time <strong>$10 registration fee</strong> is required right
+          after signup to continue to verification.
         </p>
       </div>
 
@@ -199,10 +386,10 @@ export const ProviderSignupPageComponent = props => {
                 <span className={css.stepNum}>1</span> Create your free account
               </li>
               <li>
-                <span className={css.stepNum}>2</span> Add truck & compliance details
+                <span className={css.stepNum}>2</span> Add truck &amp; U.S. compliance details
               </li>
               <li>
-                <span className={css.stepNum}>3</span> Verify documents (quick)
+                <span className={css.stepNum}>3</span> Pay the one-time $10 fee &amp; verify docs
               </li>
               <li>
                 <span className={css.stepNum}>4</span> Start bidding on shipments
@@ -224,10 +411,11 @@ export const ProviderSignupPageComponent = props => {
         </section>
 
         {/* RIGHT: Form panel */}
-        <section className={css.formPanel} aria-label="Carrier signup form">
+        <section className={css.formPanel} aria-label="U.S. carrier signup form">
           <div className={css.formCard}>
             <FinalForm
               mutators={{ ...arrayMutators }}
+              validate={validateForm}
               onSubmit={onSubmit}
               render={({ handleSubmit, invalid, submitting, submitError, values }) => (
                 <Form onSubmit={handleSubmit} className={css.form}>
@@ -265,7 +453,7 @@ export const ProviderSignupPageComponent = props => {
                     <FieldPhoneNumberInput
                       id="phone"
                       name="phone"
-                      label="Phone number"
+                      label="Phone number (U.S.)"
                       placeholder="(555) 555-5555"
                     />
                     <FieldSelect
@@ -308,7 +496,7 @@ export const ProviderSignupPageComponent = props => {
                       <FieldCheckbox
                         id="hasMC"
                         name="hasMC"
-                        label="I have an MC number (for interstate)"
+                        label="I have an MC number (required for interstate)"
                       />
                     </div>
                   </div>
@@ -329,12 +517,12 @@ export const ProviderSignupPageComponent = props => {
                       label="MC Number"
                       placeholder="e.g., MC-123456"
                       validate={requiredIf('MC number is required for interstate carriers', v =>
-                        needsMC(v)
+                        isInterstate(v)
                       )}
                     />
                   </div>
 
-                  {/* Insurance attestations */}
+                  {/* Insurance attestations (U.S. FMCSA minimums) */}
                   <div className={css.twoCol}>
                     <FieldTextInput
                       id="autoLiabilityLimit"
@@ -386,29 +574,34 @@ export const ProviderSignupPageComponent = props => {
                     />
                   </div>
 
-                  {/* Operating geography (kept from original) */}
+                  {/* U.S. Operating geography */}
                   <div className={css.twoCol}>
                     <FieldSelect
-                      id="serviceRegion"
-                      name="serviceRegion"
-                      label="Service region"
-                      validate={required('Select a service region')}
+                      id="serviceArea"
+                      name="serviceArea"
+                      label="Service area (U.S.)"
+                      validate={required('Select a service area')}
                     >
                       <option value="" disabled>
-                        Select region
+                        Select service area
                       </option>
-                      {REGION_OPTIONS.map(o => (
+                      {US_SERVICE_AREA.map(o => (
                         <option key={o.key} value={o.key}>
                           {o.label}
                         </option>
                       ))}
                     </FieldSelect>
+
                     <FieldTextInput
-                      id="serviceCities"
-                      name="serviceCities"
+                      id="serviceStates"
+                      name="serviceStates"
                       type="text"
-                      label="Cities you serve (comma-separated)"
-                      placeholder="e.g., Phoenix, Las Vegas, San Diego"
+                      label="States (2-letter codes, comma-separated)"
+                      placeholder="e.g., CA, NV, AZ"
+                      validate={requiredIf(
+                        'Enter at least one state code (e.g., CA, NV, AZ)',
+                        v => v?.serviceArea === 'specific_states'
+                      )}
                     />
                   </div>
 
@@ -433,7 +626,7 @@ export const ProviderSignupPageComponent = props => {
                     />
                   </div>
 
-                  {/* Legal documents / consents */}
+                  {/* Legal documents / consents (U.S.) */}
                   <div className={css.legalBlock}>
                     <FieldCheckbox
                       id="w9Attestation"
@@ -513,7 +706,7 @@ export const ProviderSignupPageComponent = props => {
                     disabled={invalid || submitting}
                     className={css.submitBtn}
                   >
-                    Create provider account
+                    {submitting ? 'Creating account…' : 'Create provider account'}
                   </PrimaryButton>
 
                   <p className={css.altAction}>
@@ -523,11 +716,11 @@ export const ProviderSignupPageComponent = props => {
                     </InlineTextButton>
                   </p>
 
-                  {/* Simple inline hint showing when MC becomes required */}
+                  {/* U.S.-specific hinting */}
                   <p className={css.hint}>
                     {isInterstate(values)
-                      ? 'Interstate carriers generally need MC authority and minimum $750,000 auto liability.'
-                      : 'Intrastate-only carriers typically do not need MC authority (state rules may vary).'}
+                      ? 'Interstate carriers must have MC authority and at least $750,000 auto liability.'
+                      : 'Intrastate-only carriers may not require MC authority (state rules vary).'}
                   </p>
                 </Form>
               )}
@@ -539,4 +732,4 @@ export const ProviderSignupPageComponent = props => {
   );
 };
 
-export default ProviderSignupPageComponent;
+export default withRouter(ProviderSignupPageComponent);

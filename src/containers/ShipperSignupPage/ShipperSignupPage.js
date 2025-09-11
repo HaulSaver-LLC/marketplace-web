@@ -1,8 +1,11 @@
 // ===============================
 // FILE: src/containers/ShipperSignupPage/ShipperSignupPage.js
-// DESCRIPTION: Signup page for Customers/Shippers using Sharetribe Flex components.
+// DESCRIPTION: U.S.-ONLY signup page for Customers/Shippers using Sharetribe Flex components.
+// NOTE: After successful signup, this redirects to /register/payment
+//       for the $10 registration fee (Stripe Payment Intent flow).
 // ===============================
 import React, { useMemo } from 'react';
+import { withRouter } from 'react-router-dom';
 import { Form as FinalForm } from 'react-final-form';
 import { FORM_ERROR } from 'final-form';
 import arrayMutators from 'final-form-arrays';
@@ -38,18 +41,13 @@ const USER_TYPE_OPTIONS = [
   { key: 'business', label: 'Business' },
 ];
 
-const ORIGIN_REGION_OPTIONS = [
-  { key: 'us', label: 'United States' },
-  { key: 'canada', label: 'Canada' },
-  { key: 'philippines', label: 'Philippines' },
-  { key: 'eu', label: 'Europe (EU)' },
-  { key: 'other', label: 'Other / Worldwide' },
-];
+// US-only
+const ORIGIN_REGION_OPTIONS = [{ key: 'us', label: 'United States (US-only accounts)' }];
 
 const CONTACT_PREFS = [{ key: 'email', label: 'Email' }, { key: 'phone', label: 'Phone' }];
 
 export const ShipperSignupPageComponent = props => {
-  const onSubmit = values => {
+  const onSubmit = async values => {
     const {
       email,
       password,
@@ -70,6 +68,11 @@ export const ShipperSignupPageComponent = props => {
       return { [FORM_ERROR]: 'Please accept the Terms of Service.' };
     }
 
+    // Enforce US-only selection just in case
+    if (originRegion && originRegion !== 'us') {
+      return { [FORM_ERROR]: 'This marketplace currently supports U.S. shippers only.' };
+    }
+
     const profile = {
       firstName: givenName,
       lastName: familyName,
@@ -80,7 +83,7 @@ export const ShipperSignupPageComponent = props => {
         shipperProfile: {
           accountType: userType || 'individual',
           companyName: userType === 'business' ? companyName || null : null,
-          originRegion,
+          originRegion: 'us',
           originCities,
           typicalItems,
           contactPreference: contactPreference || 'email',
@@ -93,19 +96,37 @@ export const ShipperSignupPageComponent = props => {
     };
 
     const payload = { email, password, marketplace: 'flex', profile };
-    return props.onSignup ? props.onSignup(payload) : Promise.resolve();
+
+    try {
+      // Create account + authenticate
+      if (props.onSignup) {
+        await props.onSignup(payload);
+      }
+      // Redirect to the $10 registration fee step before verification
+      props.history.push('/register/payment');
+      return undefined;
+    } catch (e) {
+      const message =
+        e?.message ||
+        e?.errors?.[0]?.message ||
+        'Signup failed. Please review your details and try again.';
+      return { [FORM_ERROR]: message };
+    }
   };
 
   const companyPlaceholder = useMemo(() => 'Company (if business shipper)', []);
 
   return (
-    <Page className={css.root} title="Sign up as a Shipper">
+    <Page className={css.root} title="Sign up as a Shipper (U.S.)">
       <div className={css.hero}>
         <H1 as="h1" rootClassName={css.headline}>
-          Ship smarter with HaulSaver
+          Ship smarter with HaulSaver (U.S.)
         </H1>
         <p className={css.subhead}>
           Create your account to post shipments, compare bids, and manage deliveries in one place.
+          <br />
+          <strong>Note:</strong> A one-time <strong>$10 registration fee</strong> is required right
+          after signup to continue to verification.
         </p>
       </div>
 
@@ -137,13 +158,16 @@ export const ShipperSignupPageComponent = props => {
                 <span className={css.stepNum}>1</span> Create your account
               </li>
               <li>
-                <span className={css.stepNum}>2</span> Post your shipment details
+                <span className={css.stepNum}>2</span> Pay the one-time $10 registration fee
               </li>
               <li>
-                <span className={css.stepNum}>3</span> Compare bids & choose a carrier
+                <span className={css.stepNum}>3</span> Post your shipment details
               </li>
               <li>
-                <span className={css.stepNum}>4</span> Track delivery and confirm completion
+                <span className={css.stepNum}>4</span> Compare bids & choose a carrier
+              </li>
+              <li>
+                <span className={css.stepNum}>5</span> Track delivery and confirm completion
               </li>
             </ol>
           </div>
@@ -162,7 +186,7 @@ export const ShipperSignupPageComponent = props => {
         </section>
 
         {/* RIGHT: Form panel */}
-        <section className={css.formPanel} aria-label="Shipper signup form">
+        <section className={css.formPanel} aria-label="Shipper signup form (U.S.)">
           <div className={css.formCard}>
             <FinalForm
               mutators={{ ...arrayMutators }}
@@ -223,7 +247,7 @@ export const ShipperSignupPageComponent = props => {
                     <FieldPhoneNumberInput
                       id="phone"
                       name="phone"
-                      label="Phone number"
+                      label="Phone number (U.S.)"
                       placeholder="(555) 555-5555"
                     />
                     <FieldSelect
@@ -242,13 +266,13 @@ export const ShipperSignupPageComponent = props => {
                     </FieldSelect>
                   </div>
 
-                  {/* Shipping profile */}
+                  {/* Shipping profile (US-only) */}
                   <div className={css.twoCol}>
                     <FieldSelect
                       id="originRegion"
                       name="originRegion"
                       label="Where do you primarily ship from?"
-                      validate={required('Please select a region')}
+                      validate={required('Please select United States')}
                     >
                       <option value="" disabled>
                         Select a region
@@ -263,7 +287,7 @@ export const ShipperSignupPageComponent = props => {
                       id="originCities"
                       name="originCities"
                       type="text"
-                      label="Cities/areas (comma-separated)"
+                      label="U.S. cities/areas (comma-separated)"
                       placeholder="e.g., Los Angeles, Phoenix, Las Vegas"
                     />
                   </div>
@@ -329,7 +353,7 @@ export const ShipperSignupPageComponent = props => {
                     disabled={invalid || submitting}
                     className={css.submitBtn}
                   >
-                    Create shipper account
+                    {submitting ? 'Creating account…' : 'Create shipper account'}
                   </PrimaryButton>
 
                   <p className={css.altAction}>
@@ -348,4 +372,4 @@ export const ShipperSignupPageComponent = props => {
   );
 };
 
-export default ShipperSignupPageComponent;
+export default withRouter(ShipperSignupPageComponent);
