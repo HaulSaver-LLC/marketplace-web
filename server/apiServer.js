@@ -7,7 +7,6 @@ require('./env').configureEnv();
 const express = require('express');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
-const bodyParser = require('body-parser');
 const cors = require('cors');
 const crypto = require('crypto');
 const Stripe = require('stripe');
@@ -19,28 +18,38 @@ const robotsTxtRoute = require('./resources/robotsTxt');
 const sitemapResourceRoute = require('./resources/sitemap');
 
 // ---- Stripe & fee config ----
-const stripeSecret = process.env.STRIPE_SECRET_KEY;
+const stripeSecret = (process.env.STRIPE_SECRET_KEY || '').trim();
 const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
-const FEE_AMOUNT = Number(process.env.REGISTRATION_FEE_AMOUNT || '1000'); // cents ($10)
-const FEE_CURRENCY = process.env.REGISTRATION_FEE_CURRENCY || 'usd';
+
+// Clean & validate fee amount from env (remove any inline comments/spaces)
+const rawAmount = String(process.env.REGISTRATION_FEE_AMOUNT || '1000').trim();
+// remove all non-digits just in case: "1000   # in cents" -> "1000"
+const cleanedAmount = rawAmount.replace(/[^\d]/g, '');
+const FEE_AMOUNT = parseInt(cleanedAmount || '0', 10);
+
+// Currency: trimmed & lowercase
+const FEE_CURRENCY = String(process.env.REGISTRATION_FEE_CURRENCY || 'usd')
+  .trim()
+  .toLowerCase();
 
 // ---- App & port ----
 const radix = 10;
 const PORT = parseInt(process.env.REACT_APP_DEV_API_SERVER_PORT || '3500', radix);
+const ORIGIN = (process.env.REACT_APP_MARKETPLACE_ROOT_URL || 'http://localhost:3000').trim();
 const app = express();
 
 // CORS (dev only; app runs on a different port than the browser client)
 app.use(
   cors({
-    origin: process.env.REACT_APP_MARKETPLACE_ROOT_URL,
+    origin: ORIGIN,
     credentials: true,
   })
 );
 
 // Cookies & body parsing
 app.use(cookieParser());
-app.use(bodyParser.json({ limit: '1mb' }));
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(express.json({ limit: '1mb' }));
+app.use(express.urlencoded({ extended: true }));
 
 // .well-known routes
 app.use('/.well-known', wellKnownRouter);
@@ -52,6 +61,7 @@ app.get('/api/health', (_req, res) => {
     stripeConfigured: Boolean(stripeSecret),
     feeAmount: FEE_AMOUNT,
     feeCurrency: FEE_CURRENCY,
+    origin: ORIGIN,
   });
 });
 
@@ -62,6 +72,12 @@ app.post('/api/registration-payment-intent', async (req, res) => {
       return res
         .status(500)
         .json({ error: 'Stripe is not configured (missing STRIPE_SECRET_KEY).' });
+    }
+    if (!Number.isFinite(FEE_AMOUNT) || FEE_AMOUNT <= 0) {
+      return res.status(500).json({
+        error:
+          'Invalid REGISTRATION_FEE_AMOUNT. Set a positive integer number of cents (e.g., 1000).',
+      });
     }
 
     const { userId, email } = req.body || {};
@@ -87,7 +103,7 @@ app.post('/api/registration-payment-intent', async (req, res) => {
       { idempotencyKey }
     );
 
-    res.json({ clientSecret: pi.client_secret });
+    res.json({ clientSecret: pi.client_secret, id: pi.id });
   } catch (err) {
     console.error('Failed to create registration PaymentIntent:', err);
     res.status(500).json({ error: 'Failed to create PaymentIntent' });
@@ -115,4 +131,9 @@ app.get('/sitemap-:resource', sitemapResourceRoute);
 
 app.listen(PORT, () => {
   console.log(`API server listening on ${PORT}`);
+  console.log(
+    `Stripe: ${
+      stripe ? 'configured' : 'NOT configured'
+    }, Fee: ${FEE_AMOUNT} ${FEE_CURRENCY}, CORS origin: ${ORIGIN}`
+  );
 });

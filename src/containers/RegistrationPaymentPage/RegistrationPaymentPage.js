@@ -5,8 +5,8 @@
 // - Marks user as paid (publicData.registrationPaid = true) on success
 // - Refreshes currentUser in Redux and redirects to /verify-email
 // REQUIREMENTS:
-// - Backend endpoint POST /api/registration/intent -> { clientSecret }
-// - STRIPE_PUBLISHABLE_KEY in env
+// - Backend endpoint POST /api/registration-payment-intent -> { clientSecret }
+// - REACT_APP_STRIPE_PUBLISHABLE_KEY in env
 // ===============================
 import React, { useEffect, useMemo, useState } from 'react';
 import { compose } from 'redux';
@@ -16,10 +16,6 @@ import { injectIntl } from '../../util/reactIntl';
 import { ensureCurrentUser } from '../../util/data';
 import { propTypes } from '../../util/types';
 import { fetchCurrentUser } from '../../ducks/user.duck';
-//import sdk from '../../util/sdk';
-
-import { createInstance } from '../../util/sdkLoader';
-const sdk = createInstance();
 
 import { loadStripe } from '@stripe/stripe-js';
 import { Elements, useStripe, useElements, PaymentElement } from '@stripe/react-stripe-js';
@@ -27,12 +23,12 @@ import { Elements, useStripe, useElements, PaymentElement } from '@stripe/react-
 import { PrimaryButton, Page, H1, H3 } from '../../components';
 import css from './RegistrationPaymentPage.module.css';
 
-const stripePromise = loadStripe(
-  process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY || process.env.STRIPE_PUBLISHABLE_KEY
-);
+// --- Stripe key guard (browser must have REACT_APP_*)
+const PUBLISHABLE_KEY = process.env.REACT_APP_STRIPE_PUBLISHABLE_KEY;
+const stripePromise = PUBLISHABLE_KEY ? loadStripe(PUBLISHABLE_KEY) : Promise.resolve(null);
 
 // ----- Inner form (assumes Elements + clientSecret already mounted) -----
-const PayInner = ({ currentUser, onSuccess, dispatch }) => {
+const PayInner = ({ onSuccess, dispatch }) => {
   const stripe = useStripe();
   const elements = useElements();
 
@@ -48,9 +44,7 @@ const PayInner = ({ currentUser, onSuccess, dispatch }) => {
 
     const { error: confirmErr, paymentIntent } = await stripe.confirmPayment({
       elements,
-      confirmParams: {
-        // return_url can be added for redirect-based flows if needed
-      },
+      confirmParams: {},
       redirect: 'if_required',
     });
 
@@ -63,7 +57,10 @@ const PayInner = ({ currentUser, onSuccess, dispatch }) => {
     const piStatus = paymentIntent?.status;
     if (piStatus === 'succeeded' || piStatus === 'processing' || piStatus === 'requires_capture') {
       try {
-        // 1) Mark paid in publicData so route guard (requiresPaid) can read it
+        // Lazy-load the Sharetribe SDK AFTER payment (avoids module-load issues)
+        const { default: sdk } = await import('../../util/sdk');
+
+        // Mark paid in publicData (simple gate signal)
         await sdk.currentUser.updateProfile({
           publicData: {
             registrationPaid: true,
@@ -75,16 +72,14 @@ const PayInner = ({ currentUser, onSuccess, dispatch }) => {
               status: piStatus,
             },
           },
-          // (Optional) duplicate minimal info in protectedData if you want it private too
           protectedData: {
             registrationPaidAt: new Date().toISOString(),
           },
         });
 
-        // 2) Refresh the Redux store's currentUser so gating works immediately
+        // Refresh Redux store so guards react immediately
         await dispatch(fetchCurrentUser());
       } catch (e) {
-        // PI already succeeded, proceed but log the issue
         // eslint-disable-next-line no-console
         console.error('currentUser.updateProfile failed', e);
       }
@@ -109,55 +104,98 @@ const PayInner = ({ currentUser, onSuccess, dispatch }) => {
 };
 
 // ----- Page component: fetches clientSecret and mounts Elements -----
-export const RegistrationPaymentPageComponent = props => {
-  const { currentUser, history, dispatch } = props;
-
+export const RegistrationPaymentPageComponent = ({ currentUser = null, history, dispatch }) => {
   const [clientSecret, setClientSecret] = useState(null);
   const [status, setStatus] = useState('idle'); // idle|loading|error
   const [error, setError] = useState(null);
 
-  // Require logged-in user
   useEffect(() => {
-    const u = ensureCurrentUser(currentUser);
-    if (!u?.id?.uuid) {
-      // Not logged in → send to login/signup
-      history.replace('/login');
-      return;
-    }
-    // If already paid, skip this page
-    const alreadyPaid = !!u?.attributes?.profile?.publicData?.registrationPaid;
-    if (alreadyPaid) {
-      history.replace('/verify-email');
-      return;
-    }
+    let alive = true;
 
-    const email = u?.attributes?.email;
-    setStatus('loading');
-    fetch('/api/registration/intent', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ userId: u.id.uuid, email, amount: 1000, currency: 'usd' }),
-    })
-      .then(r => r.json())
-      .then(d => {
-        if (d?.clientSecret) {
-          setClientSecret(d.clientSecret);
-          setStatus('idle');
-        } else {
-          setError(d?.error || 'Failed to initialize payment');
+    (async () => {
+      // Guard: Stripe publishable key must exist
+      if (!PUBLISHABLE_KEY) {
+        if (alive) {
+          setError('Missing REACT_APP_STRIPE_PUBLISHABLE_KEY in frontend env');
           setStatus('error');
         }
-      })
-      .catch(() => {
-        setError('Failed to initialize payment');
+        return;
+      }
+
+      // Get user from Redux or fall back to SDK
+      let u = ensureCurrentUser(currentUser);
+      let userId = u?.id?.uuid || null;
+      let email = u?.attributes?.email || null;
+      const alreadyPaid = !!u?.attributes?.profile?.publicData?.registrationPaid;
+
+      try {
+        if (!userId || !email) {
+          const { default: sdk } = await import('../../util/sdk');
+          const { data } = await sdk.currentUser.show();
+          userId = data?.id?.uuid || userId;
+          email = data?.attributes?.email || email;
+        }
+      } catch {
+        history.replace('/login');
+        return;
+      }
+
+      if (alreadyPaid) {
+        history.replace('/verify-email');
+        return;
+      }
+
+      // --- Build absolute API URL to ensure we hit port 3500 in dev ---
+      const getApiBase = () => {
+        try {
+          const base = process.env.REACT_APP_MARKETPLACE_ROOT_URL || window.location.origin;
+          const url = new URL(base);
+          url.port = String(process.env.REACT_APP_DEV_API_SERVER_PORT || '3500'); // dev API port
+          return url.origin.replace(/\/$/, '');
+        } catch {
+          return 'http://localhost:3500';
+        }
+      };
+      const API_BASE = getApiBase();
+
+      setStatus('loading');
+      try {
+        const resp = await fetch(`${API_BASE}/api/registration-payment-intent`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ userId, email, amount: 1000, currency: 'usd' }),
+          // credentials: 'include', // uncomment if you rely on cookies
+        });
+
+        // Safely parse JSON or show text/html error body
+        const ct = resp.headers.get('content-type') || '';
+        const payload = ct.includes('application/json')
+          ? await resp.json()
+          : { error: (await resp.text()).slice(0, 400) };
+
+        if (!resp.ok || !payload?.clientSecret) {
+          throw new Error(payload?.error || 'Failed to initialize payment');
+        }
+
+        if (!alive) return;
+        setClientSecret(payload.clientSecret);
+        setStatus('idle');
+      } catch (e) {
+        if (!alive) return;
+        setError(e.message || 'Failed to initialize payment');
         setStatus('error');
-      });
+      }
+    })();
+
+    return () => {
+      alive = false;
+    };
   }, [currentUser, history]);
 
   const appearance = useMemo(() => ({ theme: 'stripe' }), []);
 
-  const goToVerification = () => {
-    history.push('/verify-email');
+  const goToPostPayment = () => {
+    history.push('/'); /* or '/onboarding' */
   };
 
   return (
@@ -176,15 +214,11 @@ export const RegistrationPaymentPageComponent = props => {
             appearance,
           }}
         >
-          <PayInner currentUser={currentUser} onSuccess={goToVerification} dispatch={dispatch} />
+          <PayInner onSuccess={goToPostPayment} dispatch={dispatch} />
         </Elements>
       ) : null}
     </Page>
   );
-};
-
-RegistrationPaymentPageComponent.defaultProps = {
-  currentUser: null,
 };
 
 RegistrationPaymentPageComponent.propTypes = {
