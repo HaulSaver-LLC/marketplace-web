@@ -9,26 +9,92 @@ const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+const crypto = require('crypto');
+const Stripe = require('stripe');
+
 const apiRouter = require('./apiRouter');
 const wellKnownRouter = require('./wellKnownRouter');
 const webmanifestResourceRoute = require('./resources/webmanifest');
 const robotsTxtRoute = require('./resources/robotsTxt');
 const sitemapResourceRoute = require('./resources/sitemap');
 
+// ---- Stripe & fee config ----
+const stripeSecret = process.env.STRIPE_SECRET_KEY;
+const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
+const FEE_AMOUNT = Number(process.env.REGISTRATION_FEE_AMOUNT || '1000'); // cents ($10)
+const FEE_CURRENCY = process.env.REGISTRATION_FEE_CURRENCY || 'usd';
+
+// ---- App & port ----
 const radix = 10;
-const PORT = parseInt(process.env.REACT_APP_DEV_API_SERVER_PORT, radix);
+const PORT = parseInt(process.env.REACT_APP_DEV_API_SERVER_PORT || '3500', radix);
 const app = express();
 
-// NOTE: CORS is only needed in this dev API server because it's
-// running in a different port than the main app.
+// CORS (dev only; app runs on a different port than the browser client)
 app.use(
   cors({
     origin: process.env.REACT_APP_MARKETPLACE_ROOT_URL,
     credentials: true,
   })
 );
+
+// Cookies & body parsing
 app.use(cookieParser());
+app.use(bodyParser.json({ limit: '1mb' }));
+app.use(bodyParser.urlencoded({ extended: true }));
+
+// .well-known routes
 app.use('/.well-known', wellKnownRouter);
+
+// ---- Health check (handy in dev) ----
+app.get('/api/health', (_req, res) => {
+  res.json({
+    ok: true,
+    stripeConfigured: Boolean(stripeSecret),
+    feeAmount: FEE_AMOUNT,
+    feeCurrency: FEE_CURRENCY,
+  });
+});
+
+// ---- Registration fee: create PaymentIntent ----
+app.post('/api/registration-payment-intent', async (req, res) => {
+  try {
+    if (!stripe) {
+      return res
+        .status(500)
+        .json({ error: 'Stripe is not configured (missing STRIPE_SECRET_KEY).' });
+    }
+
+    const { userId, email } = req.body || {};
+    if (!userId || !email) {
+      return res.status(400).json({ error: 'userId and email are required' });
+    }
+
+    // Idempotency per user & fee to avoid duplicates on retries
+    const idempotencyKey = crypto
+      .createHash('sha256')
+      .update(`regfee:${userId}:${FEE_AMOUNT}:${FEE_CURRENCY}`)
+      .digest('hex');
+
+    const pi = await stripe.paymentIntents.create(
+      {
+        amount: FEE_AMOUNT,
+        currency: FEE_CURRENCY,
+        description: 'HaulSaver registration fee',
+        receipt_email: email,
+        metadata: { userId, reason: 'registration_fee' },
+        automatic_payment_methods: { enabled: true },
+      },
+      { idempotencyKey }
+    );
+
+    res.json({ clientSecret: pi.client_secret });
+  } catch (err) {
+    console.error('Failed to create registration PaymentIntent:', err);
+    res.status(500).json({ error: 'Failed to create PaymentIntent' });
+  }
+});
+
+// Mount your existing API router under /api (kept as-is)
 app.use('/api', apiRouter);
 
 // Generate web app manifest

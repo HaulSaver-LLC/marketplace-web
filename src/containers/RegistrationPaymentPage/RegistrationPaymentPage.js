@@ -16,7 +16,7 @@ import { injectIntl } from '../../util/reactIntl';
 import { ensureCurrentUser } from '../../util/data';
 import { propTypes } from '../../util/types';
 import { fetchCurrentUser } from '../../ducks/user.duck';
-import sdk from '../../util/sdk';
+//import sdk from '../../util/sdk';
 
 import { createInstance } from '../../util/sdkLoader';
 const sdk = createInstance();
