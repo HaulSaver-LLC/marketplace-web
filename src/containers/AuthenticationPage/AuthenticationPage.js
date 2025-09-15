@@ -340,6 +340,7 @@ export const AuthenticationForms = props => {
 
     // (Optional) dispatch redux or navigate
     // dispatch(...), or redirect to profile
+    navigate('/register/one-time-payment');
   };
 
   const loginErrorMessage = (
@@ -885,10 +886,7 @@ const mapDispatchToProps = dispatch => ({
 // See: https://github.com/ReactTraining/react-router/issues/4671
 const AuthenticationPage = compose(
   withRouter,
-  connect(
-    mapStateToProps,
-    mapDispatchToProps
-  )
+  connect(mapStateToProps, mapDispatchToProps)
 )(AuthenticationPageComponent);
 
 export default AuthenticationPage;

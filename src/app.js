@@ -24,6 +24,10 @@ import { IncludeScripts } from './util/includeScripts';
 
 import { MaintenanceMode } from './components';
 
+//Stripe
+import { loadStripe } from '@stripe/stripe-js';
+import { Elements } from '@stripe/react-stripe-js';
+
 // routing
 import routeConfiguration from './routing/routeConfiguration';
 import Routes from './routing/Routes';
@@ -69,6 +73,7 @@ import defaultMessages from './translations/en.json';
 // I.e. remove "const messagesInLocale" and add import for the correct locale:
 // import messagesInLocale from './translations/fr.json';
 const messagesInLocale = {};
+const stripePromise = loadStripe(process.env.REACT_APP_STRIPE_PK);
 
 // If translation key is missing from `messagesInLocale` (e.g. fr.json),
 // corresponding key will be added to messages from `defaultMessages` (en.json)
@@ -348,3 +353,10 @@ export const renderApp = (
     return { head, body };
   });
 };
+
+<Elements stripe={stripePromise}>
+  <Routes>
+    {/* ...other routes */}
+    <Route path="/register/one-time-payment" element={<OneTimePaymentPage />} />
+  </Routes>
+</Elements>;

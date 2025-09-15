@@ -7,6 +7,9 @@ import { Form as FinalForm } from 'react-final-form';
 import { FORM_ERROR } from 'final-form';
 import arrayMutators from 'final-form-arrays';
 
+//Stripe one time payment
+import { useNavigate } from 'react-router-dom';
+
 import * as validators from '../../util/validators';
 
 import {
@@ -46,7 +49,10 @@ const ORIGIN_REGION_OPTIONS = [
   { key: 'other', label: 'Other / Worldwide' },
 ];
 
-const CONTACT_PREFS = [{ key: 'email', label: 'Email' }, { key: 'phone', label: 'Phone' }];
+const CONTACT_PREFS = [
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Phone' },
+];
 
 export const ShipperSignupPageComponent = props => {
   const onSubmit = values => {
@@ -347,5 +353,10 @@ export const ShipperSignupPageComponent = props => {
     </Page>
   );
 };
+
+function handleSignupSuccess() {
+  // after signup logic
+  navigate('/register/one-time-payment');
+}
 
 export default ShipperSignupPageComponent;
