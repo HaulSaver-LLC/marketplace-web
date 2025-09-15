@@ -46,7 +46,10 @@ const ORIGIN_REGION_OPTIONS = [
   { key: 'other', label: 'Other / Worldwide' },
 ];
 
-const CONTACT_PREFS = [{ key: 'email', label: 'Email' }, { key: 'phone', label: 'Phone' }];
+const CONTACT_PREFS = [
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Phone' },
+];
 
 export const ShipperSignupPageComponent = props => {
   const onSubmit = values => {

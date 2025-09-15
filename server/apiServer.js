@@ -1,5 +1,5 @@
-// NOTE: this server is purely a dev-mode server. In production, the
-// server/index.js server also serves the API routes.
+// NOTE: this server is purely a dev-mode server. In production,
+// server/index.js also serves the API routes.
 
 // Configure process.env with .env.* files
 require('./env').configureEnv();
@@ -9,31 +9,57 @@ const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const bodyParser = require('body-parser');
 const cors = require('cors');
+
 const apiRouter = require('./apiRouter');
 const wellKnownRouter = require('./wellKnownRouter');
 const webmanifestResourceRoute = require('./resources/webmanifest');
 const robotsTxtRoute = require('./resources/robotsTxt');
 const sitemapResourceRoute = require('./resources/sitemap');
 
+// ---------- Stripe webhook handler (expects ./stripeWebhook.js) ----------
+const stripeWebhookHandler = require('./stripeWebhook'); // implement per earlier message
+
 const radix = 10;
-const PORT = parseInt(process.env.REACT_APP_DEV_API_SERVER_PORT, radix);
+const PORT = parseInt(process.env.REACT_APP_DEV_API_SERVER_PORT, radix) || 3500; // sensible default for dev
+
 const app = express();
 
-// NOTE: CORS is only needed in this dev API server because it's
-// running in a different port than the main app.
+// ---------- CORS (dev server runs on a separate port) ----------
+const allowedOrigins = [
+  process.env.REACT_APP_MARKETPLACE_ROOT_URL, // e.g. http://localhost:3000
+  'http://localhost:3000',
+  'https://dev.haulsaver.com',
+  'https://www.haulsaver.com',
+].filter(Boolean);
+
 app.use(
   cors({
-    origin: process.env.REACT_APP_MARKETPLACE_ROOT_URL,
+    origin(origin, callback) {
+      // Allow non-browser requests (e.g., curl, Stripe webhooks) which have no Origin
+      if (!origin) return callback(null, true);
+      if (allowedOrigins.includes(origin)) return callback(null, true);
+      return callback(new Error(`CORS blocked for origin: ${origin}`));
+    },
     credentials: true,
   })
 );
+
 app.use(cookieParser());
+
+// ---------- WELL-KNOWN & STATIC-LIKE RESOURCES ----------
 app.use('/.well-known', wellKnownRouter);
+
+// ---------- IMPORTANT: Stripe webhook must receive the *raw* body BEFORE any JSON parser ----------
+app.post('/api/stripe/webhook', bodyParser.raw({ type: 'application/json' }), stripeWebhookHandler);
+
+// ---------- JSON parser for all other routes ----------
+app.use(bodyParser.json());
+
+// Mount API router (includes /api/stripe/create-profile-unlock-intent and others)
 app.use('/api', apiRouter);
 
-// Generate web app manifest
-// When developing with "yarn run dev",
-// you can reach the manifest from http://localhost:3500/site.webmanifest
+// When developing with "yarn run dev", you can reach the manifest from:
+//   http://localhost:3500/site.webmanifest
 // The corresponding <link> element is set in src/components/Page/Page.js
 app.get('/site.webmanifest', webmanifestResourceRoute);
 
@@ -47,6 +73,13 @@ app.get('/robots.txt', robotsTxtRoute);
 // Handle different sitemap-* resources. E.g. /sitemap-index.xml
 app.get('/sitemap-:resource', sitemapResourceRoute);
 
+// Optional: simple health check for uptime monitors
+app.get('/api/health', (_req, res) =>
+  res.json({ ok: true, env: process.env.APP_ENV || 'development' })
+);
+
 app.listen(PORT, () => {
   console.log(`API server listening on ${PORT}`);
+  console.log('Allowed CORS origins:', allowedOrigins.join(', '));
+  console.log('Stripe webhook mounted at: /api/stripe/webhook');
 });

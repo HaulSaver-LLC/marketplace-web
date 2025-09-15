@@ -66,12 +66,15 @@
     "unified": "^9.2.2"
   },
   "devDependencies": {
+    "@babel/core": "^7.28.4",
+    "@babel/preset-env": "^7.28.3",
+    "@babel/preset-react": "^7.27.1",
     "@testing-library/dom": "^10.4.0",
     "@testing-library/jest-dom": "^5.17.0",
     "@testing-library/react": "^16.3.0",
     "@testing-library/user-event": "^13.5.0",
     "bfj": "^9.1.2",
-    "chalk": "^v4.1.2",
+    "chalk": "^4.1.2",
     "concurrently": "^8.2.2",
     "cross-env": "^7.0.3",
     "inquirer": "^8.2.6",
@@ -80,7 +83,13 @@
   },
   "resolutions": {
     "sharetribe-scripts/webpack-dev-server/express/path-to-regexp": "0.1.12",
-    "moment": "^2.30.1"
+    "moment": "^2.30.1",
+    "@babel/core": "^7.25.2",
+    "@babel/preset-env": "^7.25.4",
+    "@babel/preset-react": "^7.24.7",
+    "@babel/plugin-proposal-private-property-in-object": "^7.25.4",
+    "@babel/plugin-proposal-private-methods": "^7.24.7",
+    "@babel/plugin-proposal-class-properties": "^7.24.7"
   },
   "nodemonConfig": {
     "execMap": {
@@ -115,6 +124,37 @@
     "heroku-postbuild": "yarn run build",
     "postinstall": "patch-package",
     "translate": "node scripts/translations.js"
+  },
+  "babel": {
+    "presets": [
+      [
+        "@babel/preset-env",
+        {
+          "modules": false
+        }
+      ],
+      "@babel/preset-react"
+    ],
+    "plugins": [
+      [
+        "@babel/plugin-proposal-private-property-in-object",
+        {
+          "loose": true
+        }
+      ],
+      [
+        "@babel/plugin-proposal-private-methods",
+        {
+          "loose": true
+        }
+      ],
+      [
+        "@babel/plugin-proposal-class-properties",
+        {
+          "loose": true
+        }
+      ]
+    ]
   },
   "browserslist": {
     "production": [

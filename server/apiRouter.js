@@ -32,6 +32,8 @@ router.use(
   })
 );
 
+//router.use('/stripe', require('./routes/stripeRoutes'));
+
 // Deserialize Transit body string to JS data
 router.use((req, res, next) => {
   if (req.get('Content-Type') === 'application/transit+json' && typeof req.body === 'string') {
@@ -79,5 +81,7 @@ router.get('/auth/google', authenticateGoogle);
 // with Google. In this route a Passport.js custom callback is used for calling
 // loginWithIdp endpoint in Sharetribe Auth API to authenticate user to the marketplace
 router.get('/auth/google/callback', authenticateGoogleCallback);
+
+app.use('/api', require('./apiRouter'));
 
 module.exports = router;

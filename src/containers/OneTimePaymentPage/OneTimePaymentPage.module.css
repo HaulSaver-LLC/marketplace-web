@@ -1,0 +1,14 @@
+.root {
+  max-width: 560px;
+  margin: 32px auto;
+}
+.form {
+  display: grid;
+  gap: 16px;
+}
+.error {
+  color: #b00020;
+}
+.loading {
+  padding: 24px;
+}
