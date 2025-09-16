@@ -191,6 +191,7 @@ exports.csp = (reportUri, reportOnly) => {
         'plausible.io',
         'https://www.haulsaver.com', // ← add this if page origin is not www
         'https://haulsaver.com', // ← and/or this, depending on which is “self”
+        'https://dev.haulsaver.com',
       ],
 
       // Allow manifest explicitly (or use a relative href as in Option A)
