@@ -24,6 +24,8 @@ const API_BASE =
   process.env.REACT_APP_API_BASE ||
   (process.env.NODE_ENV === 'development' ? 'http://localhost:3500' : '');
 
+// ---------- endpoints & helpers ----------
+
 // PaymentIntent endpoints to try (dev + prod)
 const REG_INTENT_PATHS = (() => {
   const fromEnv = process.env.REACT_APP_REGISTRATION_INTENT_PATH
@@ -34,6 +36,19 @@ const REG_INTENT_PATHS = (() => {
     '/api/registration-payment-intent', // legacy/dev
     '/api/registration/intent', // prod
     '/api/intent', // extra alias if mounted
+  ];
+})();
+
+// Mark-paid endpoints to try (prod can vary)
+const MARK_PAID_PATHS = (() => {
+  const fromEnv = process.env.REACT_APP_MARK_PAID_PATH
+    ? [process.env.REACT_APP_MARK_PAID_PATH]
+    : [];
+  return [
+    ...fromEnv,
+    '/api/mark-registration-paid', // canonical
+    '/api/registration/mark-paid', // alias 1
+    '/api/registration/paid', // alias 2
   ];
 })();
 
@@ -51,15 +66,41 @@ async function createRegistrationPI(body) {
       const ct = r.headers.get('content-type') || '';
       const data = ct.includes('application/json') ? await r.json() : { error: await r.text() };
       if (r.ok && data?.clientSecret) return data;
-      if (r.status !== 404) {
-        throw new Error(data?.error || `PI init failed (${r.status})`);
-      }
+      if (r.status !== 404) throw new Error(data?.error || `PI init failed (${r.status})`);
     } catch (e) {
       lastErr = e;
     }
   }
   throw lastErr || new Error('No registration PaymentIntent endpoint reachable');
 }
+
+async function markPaidOnServer({ userId, payment }) {
+  let lastErr;
+  for (const p of MARK_PAID_PATHS) {
+    const url = `${API_BASE}${p}`;
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ userId, payment }),
+      });
+      if (r.ok) return true;
+      // For 404s, keep trying the next alias; surface other errors
+      if (r.status !== 404) {
+        const text = await r.text().catch(() => '');
+        throw new Error(`mark-paid ${p} failed ${r.status}: ${text.slice(0, 200)}`);
+      }
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  if (lastErr) throw lastErr;
+  // If all paths are 404, we silently allow the flow to proceed (payment succeeded)
+  return false;
+}
+
+// ---------- UI components ----------
 
 const PayInner = ({ onSuccess, dispatch, currentUser, clientSecret }) => {
   const stripe = useStripe();
@@ -75,26 +116,24 @@ const PayInner = ({ onSuccess, dispatch, currentUser, clientSecret }) => {
 
   const markPaidAndContinue = async pi => {
     try {
-      const resp = await fetch(`${API_BASE}/api/mark-registration-paid`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          userId,
-          payment: {
-            intentId: pi.id,
-            amount: 1000,
-            currency: 'usd',
-            at: new Date().toISOString(),
-            status: pi.status,
-          },
-        }),
+      // Try to update server profile (fallback across aliases)
+      const ok = await markPaidOnServer({
+        userId,
+        payment: {
+          intentId: pi.id,
+          amount: 1000,
+          currency: 'usd',
+          at: new Date().toISOString(),
+          status: pi.status,
+        },
       });
 
-      const payload = await resp.json().catch(() => ({}));
-      if (!resp.ok) {
+      if (!ok) {
+        // Route missing everywhere — not fatal, payment already succeeded
         // eslint-disable-next-line no-console
-        console.error('mark-registration-paid failed', { status: resp.status, payload });
-        throw new Error(payload?.error || 'Failed to update profile on server');
+        console.warn(
+          'mark-registration-paid route not found; proceeding without server profile update'
+        );
       }
 
       await dispatch(fetchCurrentUser());
@@ -151,7 +190,7 @@ const PayInner = ({ onSuccess, dispatch, currentUser, clientSecret }) => {
             billing_details: {
               name: billingName,
               email: billingEmail,
-              address: { country: 'US', postal_code: '10001' },
+              address: { country: 'US', postal_code: '10001' }, // simple test ZIP
             },
           },
         },

@@ -83,6 +83,11 @@ router.get('/auth/google/callback', authenticateGoogleCallback);
 router.use('/api/registration', require('./api/registrationFee')); // /api/registration/intent
 router.use('/api', require('./api/registration'));
 router.use('/api', require('./api/registrationFee')); // adds /api/registration-payment-intent too
+
+// Stripe PI endpoints (you already have /api/registration/intent working)
 router.use(require('./api/registrationFee'));
+
+// Mark-paid endpoint
+router.use(require('./api/registration'));
 
 module.exports = router;
