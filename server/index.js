@@ -322,6 +322,8 @@ const server = app.listen(PORT, () => {
     console.log(`Open http://localhost:${PORT}/ and start hacking!`);
   }
 });
+// server/index.js  (prod SSR server)
+app.use('/api', require('./apiRouter'));
 
 // Graceful shutdown:
 // https://expressjs.com/en/advanced/healthcheck-graceful-shutdown.html
