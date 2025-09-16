@@ -27,7 +27,7 @@ const API_BASE =
 // --------- constants ----------
 const AMOUNT_CENTS = 1000; // $10
 const CURRENCY = 'usd';
-const POST_PAYMENT_REDIRECT = process.env.REACT_APP_POST_PAYMENT_REDIRECT || '/profile';
+const POST_PAYMENT_REDIRECT = process.env.REACT_APP_POST_PAYMENT_REDIRECT || '/profile-settings';
 
 // ---------- endpoints & helpers ----------
 
