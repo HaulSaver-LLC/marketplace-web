@@ -83,5 +83,6 @@ router.get('/auth/google/callback', authenticateGoogleCallback);
 router.use('/api/registration', require('./api/registrationFee')); // /api/registration/intent
 router.use('/api', require('./api/registration'));
 router.use('/api', require('./api/registrationFee')); // adds /api/registration-payment-intent too
+router.use(require('./api/registrationFee'));
 
 module.exports = router;

@@ -71,6 +71,9 @@ app.post('/api/registration-payment-intent', async (req, res) => {
   }
 });
 
+// server/apiServer.js  (dev)
+app.use('/api', require('./apiRouter'));
+
 // ---- single listen (no earlier listens anywhere) ----
 app.listen(PORT, HOST, () => {
   console.log(`API server listening on http://${HOST}:${PORT}`);

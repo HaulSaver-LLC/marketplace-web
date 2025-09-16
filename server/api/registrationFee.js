@@ -19,8 +19,12 @@ const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
 const AMOUNT = Number(process.env.REGISTRATION_FEE_AMOUNT || 1000); // integer cents
 const CURRENCY = String(process.env.REGISTRATION_FEE_CURRENCY || 'usd').toLowerCase();
 
+// JSON body parser for this router only
+router.use(express.json());
+
+// ----- helpers -----
 async function createRegistrationPI({ userId, email }) {
-  // Verify account (super useful for debugging mismatched keys)
+  // Verify account (useful for debugging mismatched keys)
   let acctId = '(unknown)';
   try {
     const acct = await stripe.accounts.retrieve();
@@ -59,57 +63,86 @@ async function createRegistrationPI({ userId, email }) {
   return intent;
 }
 
-// JSON body parser for this router only
-router.use(express.json());
+function ok(res, intent) {
+  return res.json({
+    clientSecret: intent.client_secret,
+    id: intent.id,
+    paymentIntentId: intent.id,
+  });
+}
 
-// ---- POST /api/registration/intent  (your path)
-router.post('/intent', async (req, res) => {
-  try {
-    if (!process.env.STRIPE_SECRET_KEY) {
-      return res.status(500).json({ error: 'Stripe not configured' });
-    }
-    const { userId, email } = req.body || {};
-    if (!userId) return res.status(400).json({ error: 'Missing userId' });
+function handleError(res, err) {
+  // eslint-disable-next-line no-console
+  console.error('[Stripe] create PI error:', {
+    type: err?.type,
+    code: err?.code,
+    statusCode: err?.statusCode,
+    message: err?.message,
+  });
+  const status = err?.statusCode && Number.isInteger(err.statusCode) ? err.statusCode : 500;
+  return res.status(status).json({ error: err?.message || 'Failed to create PaymentIntent' });
+}
 
-    const intent = await createRegistrationPI({ userId, email });
-    return res.json({ clientSecret: intent.client_secret, paymentIntentId: intent.id });
-  } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[Stripe] create PI error:', {
-      type: err?.type,
-      code: err?.code,
-      statusCode: err?.statusCode,
-      message: err?.message,
-    });
-    return res.status(500).json({ error: err?.message || 'Failed to create PaymentIntent' });
-  }
-});
-
-// ---- Back-compat: POST /api/registration-payment-intent  (what your frontend calls)
+// ----- routes -----
+// Back-compat (current frontend call): POST /api/registration-payment-intent
 router.post('/registration-payment-intent', async (req, res) => {
   try {
-    if (!process.env.STRIPE_SECRET_KEY) {
+    if (!process.env.STRIPE_SECRET_KEY)
       return res.status(500).json({ error: 'Stripe not configured' });
-    }
-    const { userId, email, amount, currency } = req.body || {};
-    // We ignore amount/currency from client for safety and use server env defaults.
+    const { userId, email } = req.body || {};
     if (!userId) return res.status(400).json({ error: 'Missing userId' });
-
     const intent = await createRegistrationPI({ userId, email });
-    return res.json({ clientSecret: intent.client_secret, id: intent.id });
+    return ok(res, intent);
   } catch (err) {
-    // eslint-disable-next-line no-console
-    console.error('[Stripe] create PI error:', {
-      type: err?.type,
-      code: err?.code,
-      statusCode: err?.statusCode,
-      message: err?.message,
-    });
-    return res.status(500).json({ error: err?.message || 'Failed to create PaymentIntent' });
+    return handleError(res, err);
   }
 });
 
-// ---- Optional lookup
+// Canonical alias: POST /api/registration/intent
+router.post('/registration/intent', async (req, res) => {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY)
+      return res.status(500).json({ error: 'Stripe not configured' });
+    const { userId, email } = req.body || {};
+    if (!userId) return res.status(400).json({ error: 'Missing userId' });
+    const intent = await createRegistrationPI({ userId, email });
+    return ok(res, intent);
+  } catch (err) {
+    return handleError(res, err);
+  }
+});
+
+// Minimal alias for earlier docs: POST /api/intent
+router.post('/intent', async (req, res) => {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY)
+      return res.status(500).json({ error: 'Stripe not configured' });
+    const { userId, email } = req.body || {};
+    if (!userId) return res.status(400).json({ error: 'Missing userId' });
+    const intent = await createRegistrationPI({ userId, email });
+    return ok(res, intent);
+  } catch (err) {
+    return handleError(res, err);
+  }
+});
+
+// Optional lookup aliases
+router.get('/registration/intent/:id', async (req, res) => {
+  try {
+    const pi = await stripe.paymentIntents.retrieve(req.params.id);
+    return res.json({
+      id: pi.id,
+      status: pi.status,
+      last_payment_error: pi.last_payment_error || null,
+      charges: pi.charges?.data ?? [],
+    });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[Stripe] PI retrieve error:', err?.message);
+    return res.status(404).json({ error: 'Not found' });
+  }
+});
+
 router.get('/intent/:id', async (req, res) => {
   try {
     const pi = await stripe.paymentIntents.retrieve(req.params.id);
@@ -127,5 +160,4 @@ router.get('/intent/:id', async (req, res) => {
 });
 
 console.log('Routes mounted for registration fee endpoints.');
-
 module.exports = router;

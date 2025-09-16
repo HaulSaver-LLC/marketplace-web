@@ -24,6 +24,43 @@ const API_BASE =
   process.env.REACT_APP_API_BASE ||
   (process.env.NODE_ENV === 'development' ? 'http://localhost:3500' : '');
 
+// PaymentIntent endpoints to try (dev + prod)
+const REG_INTENT_PATHS = (() => {
+  const fromEnv = process.env.REACT_APP_REGISTRATION_INTENT_PATH
+    ? [process.env.REACT_APP_REGISTRATION_INTENT_PATH]
+    : [];
+  return [
+    ...fromEnv,
+    '/api/registration-payment-intent', // legacy/dev
+    '/api/registration/intent', // prod
+    '/api/intent', // extra alias if mounted
+  ];
+})();
+
+async function createRegistrationPI(body) {
+  let lastErr;
+  for (const p of REG_INTENT_PATHS) {
+    const url = `${API_BASE}${p}`;
+    try {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(body),
+      });
+      const ct = r.headers.get('content-type') || '';
+      const data = ct.includes('application/json') ? await r.json() : { error: await r.text() };
+      if (r.ok && data?.clientSecret) return data;
+      if (r.status !== 404) {
+        throw new Error(data?.error || `PI init failed (${r.status})`);
+      }
+    } catch (e) {
+      lastErr = e;
+    }
+  }
+  throw lastErr || new Error('No registration PaymentIntent endpoint reachable');
+}
+
 const PayInner = ({ onSuccess, dispatch, currentUser, clientSecret }) => {
   const stripe = useStripe();
   const elements = useElements();
@@ -38,7 +75,6 @@ const PayInner = ({ onSuccess, dispatch, currentUser, clientSecret }) => {
 
   const markPaidAndContinue = async pi => {
     try {
-      // Call server to update user profile via Integration API
       const resp = await fetch(`${API_BASE}/api/mark-registration-paid`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -115,7 +151,7 @@ const PayInner = ({ onSuccess, dispatch, currentUser, clientSecret }) => {
             billing_details: {
               name: billingName,
               email: billingEmail,
-              address: { country: 'US', postal_code: '10001' }, // easy test country/ZIP
+              address: { country: 'US', postal_code: '10001' },
             },
           },
         },
@@ -212,18 +248,7 @@ export const RegistrationPaymentPageComponent = ({ currentUser = null, history, 
 
       setStatus('loading');
       try {
-        const resp = await fetch(`${API_BASE}/api/registration-payment-intent`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ userId, email }),
-        });
-        const ct = resp.headers.get('content-type') || '';
-        const payload = ct.includes('application/json')
-          ? await resp.json()
-          : { error: (await resp.text()).slice(0, 400) };
-        if (!resp.ok || !payload?.clientSecret) {
-          throw new Error(payload?.error || `Failed to initialize payment (HTTP ${resp.status})`);
-        }
+        const payload = await createRegistrationPI({ userId, email });
         if (!alive) return;
         setClientSecret(payload.clientSecret);
         setStatus('idle');
