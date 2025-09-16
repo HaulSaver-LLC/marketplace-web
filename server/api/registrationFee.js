@@ -3,49 +3,129 @@ const express = require('express');
 const router = express.Router();
 const Stripe = require('stripe');
 
-const stripe = new Stripe(process.env.STRIPE_SECRET_KEY, {
+const mask = v => (v ? `${String(v).slice(0, 6)}…${String(v).slice(-4)}` : '(missing)');
+
+if (!process.env.STRIPE_SECRET_KEY) {
+  // Fail fast on boot, but keep also checking at runtime.
+  // eslint-disable-next-line no-console
+  console.error('[Stripe] Missing STRIPE_SECRET_KEY env');
+}
+
+const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '', {
   apiVersion: '2024-06-20',
 });
 
-const amount = Number(process.env.REGISTRATION_FEE_AMOUNT || 1000);
-const currency = process.env.REGISTRATION_FEE_CURRENCY || 'usd';
+// Defaults: $10 USD
+const AMOUNT = Number(process.env.REGISTRATION_FEE_AMOUNT || 1000); // integer cents
+const CURRENCY = String(process.env.REGISTRATION_FEE_CURRENCY || 'usd').toLowerCase();
 
-// POST /api/registration/intent
-// body: { userId: string, email?: string }
+async function createRegistrationPI({ userId, email }) {
+  // Verify account (super useful for debugging mismatched keys)
+  let acctId = '(unknown)';
+  try {
+    const acct = await stripe.accounts.retrieve();
+    acctId = acct?.id || acctId;
+  } catch (e) {
+    // eslint-disable-next-line no-console
+    console.warn('[Stripe] accounts.retrieve failed:', e?.type, e?.code, e?.message);
+  }
+
+  // eslint-disable-next-line no-console
+  console.log('[Stripe] Creating PI', {
+    acctId,
+    key: mask(process.env.STRIPE_SECRET_KEY),
+    amount: AMOUNT,
+    currency: CURRENCY,
+    userId,
+    email,
+  });
+
+  const intent = await stripe.paymentIntents.create({
+    amount: AMOUNT,
+    currency: CURRENCY,
+    description: 'HaulSaver registration fee',
+    receipt_email: email || undefined,
+    metadata: {
+      purpose: 'registration_fee',
+      registrationType: 'signup_fee',
+      userId: userId || '',
+      env: process.env.NODE_ENV || 'development',
+    },
+    automatic_payment_methods: { enabled: true },
+  });
+
+  // eslint-disable-next-line no-console
+  console.log('[Stripe] PI created:', { id: intent.id, status: intent.status });
+  return intent;
+}
+
+// JSON body parser for this router only
+router.use(express.json());
+
+// ---- POST /api/registration/intent  (your path)
 router.post('/intent', async (req, res) => {
   try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(500).json({ error: 'Stripe not configured' });
+    }
     const { userId, email } = req.body || {};
     if (!userId) return res.status(400).json({ error: 'Missing userId' });
 
-    const intent = await stripe.paymentIntents.create({
-      amount,
-      currency,
-      description: 'HaulSaver registration fee',
-      receipt_email: email,
-      metadata: {
-        registrationType: 'signup_fee',
-        userId,
-      },
-      automatic_payment_methods: { enabled: true },
-    });
-
+    const intent = await createRegistrationPI({ userId, email });
     return res.json({ clientSecret: intent.client_secret, paymentIntentId: intent.id });
   } catch (err) {
-    // Do not leak secrets
-    console.error('PI create error', err);
-    return res.status(500).json({ error: 'Failed to create PaymentIntent' });
+    // eslint-disable-next-line no-console
+    console.error('[Stripe] create PI error:', {
+      type: err?.type,
+      code: err?.code,
+      statusCode: err?.statusCode,
+      message: err?.message,
+    });
+    return res.status(500).json({ error: err?.message || 'Failed to create PaymentIntent' });
   }
 });
 
-// Optional: GET /api/registration/intent/:id (lookup)
+// ---- Back-compat: POST /api/registration-payment-intent  (what your frontend calls)
+router.post('/registration-payment-intent', async (req, res) => {
+  try {
+    if (!process.env.STRIPE_SECRET_KEY) {
+      return res.status(500).json({ error: 'Stripe not configured' });
+    }
+    const { userId, email, amount, currency } = req.body || {};
+    // We ignore amount/currency from client for safety and use server env defaults.
+    if (!userId) return res.status(400).json({ error: 'Missing userId' });
+
+    const intent = await createRegistrationPI({ userId, email });
+    return res.json({ clientSecret: intent.client_secret, id: intent.id });
+  } catch (err) {
+    // eslint-disable-next-line no-console
+    console.error('[Stripe] create PI error:', {
+      type: err?.type,
+      code: err?.code,
+      statusCode: err?.statusCode,
+      message: err?.message,
+    });
+    return res.status(500).json({ error: err?.message || 'Failed to create PaymentIntent' });
+  }
+});
+
+// ---- Optional lookup
 router.get('/intent/:id', async (req, res) => {
   try {
     const pi = await stripe.paymentIntents.retrieve(req.params.id);
-    return res.json({ status: pi.status, charges: pi.charges?.data ?? [] });
+    return res.json({
+      id: pi.id,
+      status: pi.status,
+      last_payment_error: pi.last_payment_error || null,
+      charges: pi.charges?.data ?? [],
+    });
   } catch (err) {
-    console.error('PI retrieve error', err);
+    // eslint-disable-next-line no-console
+    console.error('[Stripe] PI retrieve error:', err?.message);
     return res.status(404).json({ error: 'Not found' });
   }
 });
+
+console.log('Routes mounted for registration fee endpoints.');
 
 module.exports = router;
