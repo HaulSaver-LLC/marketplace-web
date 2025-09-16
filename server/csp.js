@@ -165,9 +165,36 @@ exports.csp = (reportUri, reportOnly) => {
   }
 
   // See: https://helmetjs.github.io/docs/csp/
-  return helmet.contentSecurityPolicy({
+  /* return helmet.contentSecurityPolicy({
     useDefaults: false,
     directives,
     reportOnly,
+  }); */
+
+  return helmet.contentSecurityPolicy({
+    useDefaults: true,
+    directives: {
+      defaultSrc: ["'self'"],
+
+      // Add both bare and www if you mix them
+      scriptSrc: [
+        "'self'",
+        "'nonce-<your-nonce>'",
+        "'unsafe-eval'",
+        'maps.googleapis.com',
+        'api.mapbox.com',
+        '*.googletagmanager.com',
+        '*.google-analytics.com',
+        'www.googleadservices.com',
+        '*.g.doubleclick.net',
+        'js.stripe.com',
+        'plausible.io',
+        'https://www.haulsaver.com', // ← add this if page origin is not www
+        'https://haulsaver.com', // ← and/or this, depending on which is “self”
+      ],
+
+      // Allow manifest explicitly (or use a relative href as in Option A)
+      manifestSrc: ["'self'", 'https://www.haulsaver.com', 'https://haulsaver.com'],
+    },
   });
 };
