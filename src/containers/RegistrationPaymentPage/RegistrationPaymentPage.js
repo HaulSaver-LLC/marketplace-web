@@ -57,10 +57,9 @@ const PayInner = ({ onSuccess, dispatch }) => {
     const piStatus = paymentIntent?.status;
     if (piStatus === 'succeeded' || piStatus === 'processing' || piStatus === 'requires_capture') {
       try {
-        // Lazy-load the Sharetribe SDK AFTER payment (avoids module-load issues)
+        // Lazy-load SDK after payment
         const { default: sdk } = await import('../../util/sdk');
 
-        // Mark paid in publicData (simple gate signal)
         await sdk.currentUser.updateProfile({
           publicData: {
             registrationPaid: true,
@@ -77,7 +76,7 @@ const PayInner = ({ onSuccess, dispatch }) => {
           },
         });
 
-        // Refresh Redux store so guards react immediately
+        // Refresh Redux
         await dispatch(fetchCurrentUser());
       } catch (e) {
         // eslint-disable-next-line no-console
@@ -122,7 +121,7 @@ export const RegistrationPaymentPageComponent = ({ currentUser = null, history, 
         return;
       }
 
-      // Get user from Redux or fall back to SDK
+      // Get user (from Redux; fallback to SDK)
       let u = ensureCurrentUser(currentUser);
       let userId = u?.id?.uuid || null;
       let email = u?.attributes?.email || null;
@@ -145,36 +144,23 @@ export const RegistrationPaymentPageComponent = ({ currentUser = null, history, 
         return;
       }
 
-      // --- Build absolute API URL to ensure we hit port 3500 in dev ---
-      const getApiBase = () => {
-        try {
-          const base = process.env.REACT_APP_MARKETPLACE_ROOT_URL || window.location.origin;
-          const url = new URL(base);
-          url.port = String(process.env.REACT_APP_DEV_API_SERVER_PORT || '3500'); // dev API port
-          return url.origin.replace(/\/$/, '');
-        } catch {
-          return 'http://localhost:3500';
-        }
-      };
-      const API_BASE = getApiBase();
-
+      // --- Same-origin API call (proxy /api -> server in dev, nginx in prod) ---
       setStatus('loading');
       try {
-        const resp = await fetch(`${API_BASE}/api/registration-payment-intent`, {
+        const resp = await fetch('/api/registration-payment-intent', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ userId, email, amount: 1000, currency: 'usd' }),
-          // credentials: 'include', // uncomment if you rely on cookies
+          // credentials: 'include', // enable if your API needs cookies
         });
 
-        // Safely parse JSON or show text/html error body
         const ct = resp.headers.get('content-type') || '';
         const payload = ct.includes('application/json')
           ? await resp.json()
           : { error: (await resp.text()).slice(0, 400) };
 
         if (!resp.ok || !payload?.clientSecret) {
-          throw new Error(payload?.error || 'Failed to initialize payment');
+          throw new Error(payload?.error || `Failed to initialize payment (HTTP ${resp.status})`);
         }
 
         if (!alive) return;
@@ -182,7 +168,12 @@ export const RegistrationPaymentPageComponent = ({ currentUser = null, history, 
         setStatus('idle');
       } catch (e) {
         if (!alive) return;
-        setError(e.message || 'Failed to initialize payment');
+        // Helpful hint if CSP blocked a cross-origin call previously
+        const msg =
+          e?.message && /Failed to fetch|CSP|connect-src|blocked/i.test(e.message)
+            ? 'Failed to reach payment API. Make sure /api is same-origin or proxied.'
+            : e.message || 'Failed to initialize payment';
+        setError(msg);
         setStatus('error');
       }
     })();
@@ -195,7 +186,7 @@ export const RegistrationPaymentPageComponent = ({ currentUser = null, history, 
   const appearance = useMemo(() => ({ theme: 'stripe' }), []);
 
   const goToPostPayment = () => {
-    history.push('/'); /* or '/onboarding' */
+    history.push('/verify-email'); // continue to verification after payment
   };
 
   return (
