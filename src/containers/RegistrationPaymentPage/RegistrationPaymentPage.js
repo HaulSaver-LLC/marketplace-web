@@ -24,6 +24,11 @@ const API_BASE =
   process.env.REACT_APP_API_BASE ||
   (process.env.NODE_ENV === 'development' ? 'http://localhost:3500' : '');
 
+// --------- constants ----------
+const AMOUNT_CENTS = 1000; // $10
+const CURRENCY = 'usd';
+const POST_PAYMENT_REDIRECT = process.env.REACT_APP_POST_PAYMENT_REDIRECT || '/profile';
+
 // ---------- endpoints & helpers ----------
 
 // PaymentIntent endpoints to try (dev + prod)
@@ -51,6 +56,9 @@ const MARK_PAID_PATHS = (() => {
     '/api/registration/paid', // alias 2
   ];
 })();
+
+// Cache key so we reuse PI within the same session and avoid duplicates
+const piCacheKey = userId => `reg.pi.${userId}.${AMOUNT_CENTS}.${CURRENCY}`;
 
 async function createRegistrationPI(body) {
   let lastErr;
@@ -114,6 +122,12 @@ const PayInner = ({ onSuccess, dispatch, currentUser, clientSecret }) => {
   const billingEmail = uNow?.attributes?.email || '';
   const userId = uNow?.id?.uuid;
 
+  const clearCachedPI = () => {
+    try {
+      sessionStorage.removeItem(piCacheKey(userId));
+    } catch {}
+  };
+
   const markPaidAndContinue = async pi => {
     try {
       // Try to update server profile (fallback across aliases)
@@ -121,8 +135,8 @@ const PayInner = ({ onSuccess, dispatch, currentUser, clientSecret }) => {
         userId,
         payment: {
           intentId: pi.id,
-          amount: 1000,
-          currency: 'usd',
+          amount: AMOUNT_CENTS,
+          currency: CURRENCY,
           at: new Date().toISOString(),
           status: pi.status,
         },
@@ -143,6 +157,7 @@ const PayInner = ({ onSuccess, dispatch, currentUser, clientSecret }) => {
       setError('Paid, but failed to update profile. Please refresh; your payment is recorded.');
     }
 
+    clearCachedPI();
     setStatus('succeeded');
     onSuccess();
   };
@@ -169,6 +184,8 @@ const PayInner = ({ onSuccess, dispatch, currentUser, clientSecret }) => {
       if (existingPI.status === 'canceled') {
         setError('Payment session expired. Please reload the page to start a new payment.');
         setStatus('failed');
+        // nuke cached secret so a new PI can be created on reload
+        clearCachedPI();
         return;
       }
 
@@ -281,15 +298,25 @@ export const RegistrationPaymentPageComponent = ({ currentUser = null, history, 
       }
 
       if (alreadyPaid) {
-        history.replace('/verify-email');
+        history.replace(POST_PAYMENT_REDIRECT);
         return;
       }
 
       setStatus('loading');
       try {
-        const payload = await createRegistrationPI({ userId, email });
+        // Reuse an existing PI in this session if present
+        const cacheKey = piCacheKey(userId);
+        const cached = sessionStorage.getItem(cacheKey);
+
+        if (cached) {
+          setClientSecret(cached);
+        } else {
+          const payload = await createRegistrationPI({ userId, email });
+          sessionStorage.setItem(cacheKey, payload.clientSecret);
+          setClientSecret(payload.clientSecret);
+        }
+
         if (!alive) return;
-        setClientSecret(payload.clientSecret);
         setStatus('idle');
       } catch (e) {
         if (!alive) return;
@@ -308,7 +335,7 @@ export const RegistrationPaymentPageComponent = ({ currentUser = null, history, 
 
   const appearance = useMemo(() => ({ theme: 'stripe' }), []);
   const goToPostPayment = () => {
-    history.push('/verify-email');
+    history.push(POST_PAYMENT_REDIRECT);
   };
 
   return (
