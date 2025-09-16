@@ -1,15 +1,11 @@
-// NOTE: this server is purely a dev-mode server. In production, the
-// server/index.js server also serves the API routes.
-
-// Configure process.env with .env.* files
+// server/apiServer.js
+// Dev-only API server. In production, server/index.js serves API routes too.
 require('./env').configureEnv();
 
 const express = require('express');
 const compression = require('compression');
 const cookieParser = require('cookie-parser');
 const cors = require('cors');
-const crypto = require('crypto');
-const Stripe = require('stripe');
 
 const apiRouter = require('./apiRouter');
 const wellKnownRouter = require('./wellKnownRouter');
@@ -17,125 +13,65 @@ const webmanifestResourceRoute = require('./resources/webmanifest');
 const robotsTxtRoute = require('./resources/robotsTxt');
 const sitemapResourceRoute = require('./resources/sitemap');
 
-// ---- Stripe & fee config ----
-const stripeSecret = (process.env.STRIPE_SECRET_KEY || '').trim();
-const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
-
-// Clean & validate fee amount from env (remove any inline comments/spaces)
-const rawAmount = String(process.env.REGISTRATION_FEE_AMOUNT || '1000').trim();
-// remove all non-digits just in case: "1000   # in cents" -> "1000"
-const cleanedAmount = rawAmount.replace(/[^\d]/g, '');
-const FEE_AMOUNT = parseInt(cleanedAmount || '0', 10);
-
-// Currency: trimmed & lowercase
-const FEE_CURRENCY = String(process.env.REGISTRATION_FEE_CURRENCY || 'usd')
-  .trim()
-  .toLowerCase();
-
-// ---- App & port ----
-const radix = 10;
-const PORT = parseInt(process.env.REACT_APP_DEV_API_SERVER_PORT || '3500', radix);
-const ORIGIN = (process.env.REACT_APP_MARKETPLACE_ROOT_URL || 'http://localhost:3000').trim();
+// ---- init app FIRST (fixes "Cannot access 'app' before initialization") ----
 const app = express();
 
-// CORS (dev only; app runs on a different port than the browser client)
-app.use(
-  cors({
-    origin: ORIGIN,
-    credentials: true,
-  })
-);
+// ---- config ----
+const PORT = process.env.REACT_APP_DEV_API_SERVER_PORT || 3500;
+const HOST = process.env.BIND_HOST || '127.0.0.1';
+const ORIGIN = (process.env.REACT_APP_MARKETPLACE_ROOT_URL || 'http://localhost:3000').trim();
 
-// Cookies & body parsing
+// ---- middleware (order matters) ----
+app.use(cors({ origin: ORIGIN, credentials: true }));
 app.use(cookieParser());
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 
-// .well-known routes
+// ---- health ----
+app.get('/api/health', (_req, res) => res.json({ ok: true, origin: ORIGIN }));
+
+// ---- your API routes ----
+// NOTE: apiRouter already contains handlers under '/api/...'
+app.use('/api', apiRouter);
+
+// ---- misc resources served by dev server ----
 app.use('/.well-known', wellKnownRouter);
+app.get('/site.webmanifest', webmanifestResourceRoute);
+app.use(compression());
+app.get('/robots.txt', robotsTxtRoute);
+app.get('/sitemap-:resource', sitemapResourceRoute);
 
-// ---- Health check (handy in dev) ----
-app.get('/api/health', (_req, res) => {
-  res.json({
-    ok: true,
-    stripeConfigured: Boolean(stripeSecret),
-    feeAmount: FEE_AMOUNT,
-    feeCurrency: FEE_CURRENCY,
-    origin: ORIGIN,
-  });
-});
+const Stripe = require('stripe');
+const stripeSecret = (process.env.STRIPE_SECRET_KEY || '').trim();
+const stripe = stripeSecret ? new Stripe(stripeSecret) : null;
 
-// ---- Registration fee: create PaymentIntent ----
 app.post('/api/registration-payment-intent', async (req, res) => {
   try {
-    if (!stripe) {
-      return res
-        .status(500)
-        .json({ error: 'Stripe is not configured (missing STRIPE_SECRET_KEY).' });
-    }
-    if (!Number.isFinite(FEE_AMOUNT) || FEE_AMOUNT <= 0) {
-      return res.status(500).json({
-        error:
-          'Invalid REGISTRATION_FEE_AMOUNT. Set a positive integer number of cents (e.g., 1000).',
-      });
-    }
+    if (!stripe) return res.status(500).json({ error: 'Missing STRIPE_SECRET_KEY' });
 
     const { userId, email } = req.body || {};
-    if (!userId || !email) {
-      return res.status(400).json({ error: 'userId and email are required' });
-    }
+    if (!userId || !email) return res.status(400).json({ error: 'userId and email are required' });
 
-    // Idempotency per user & fee to avoid duplicates on retries
-    const idempotencyKey = crypto
-      .createHash('sha256')
-      .update(`regfee:${userId}:${FEE_AMOUNT}:${FEE_CURRENCY}`)
-      .digest('hex');
+    const amount = Number(process.env.REGISTRATION_FEE_AMOUNT || 1000); // cents
+    const currency = String(process.env.REGISTRATION_FEE_CURRENCY || 'usd').toLowerCase();
 
-    const pi = await stripe.paymentIntents.create(
-      {
-        amount: FEE_AMOUNT,
-        currency: FEE_CURRENCY,
-        description: 'HaulSaver registration fee',
-        receipt_email: email,
-        metadata: { userId, reason: 'registration_fee' },
-        automatic_payment_methods: { enabled: true },
-      },
-      { idempotencyKey }
-    );
+    const pi = await stripe.paymentIntents.create({
+      amount,
+      currency,
+      description: 'Registration fee',
+      receipt_email: email,
+      metadata: { userId, reason: 'registration_fee' },
+      automatic_payment_methods: { enabled: true },
+    });
 
     res.json({ clientSecret: pi.client_secret, id: pi.id });
   } catch (err) {
-    console.error('Failed to create registration PaymentIntent:', err);
+    console.error('create PI failed', err);
     res.status(500).json({ error: 'Failed to create PaymentIntent' });
   }
 });
 
-// Mount your existing API router under /api (kept as-is)
-app.use('/api', apiRouter);
-
-// Generate web app manifest
-// When developing with "yarn run dev",
-// you can reach the manifest from http://localhost:3500/site.webmanifest
-// The corresponding <link> element is set in src/components/Page/Page.js
-app.get('/site.webmanifest', webmanifestResourceRoute);
-
-// robots.txt and sitemap-* fetches should return similarly compressed data as server/index.js
-app.use(compression());
-
-// robots.txt is generated by resources/robotsTxt.js
-// It creates the sitemap URL with the correct marketplace URL
-app.get('/robots.txt', robotsTxtRoute);
-
-// Handle different sitemap-* resources. E.g. /sitemap-index.xml
-app.get('/sitemap-:resource', sitemapResourceRoute);
-
-app.listen(PORT, () => {
-  console.log(`API server listening on ${PORT}`);
-  console.log(
-    `Stripe: ${
-      stripe ? 'configured' : 'NOT configured'
-    }, Fee: ${FEE_AMOUNT} ${FEE_CURRENCY}, CORS origin: ${ORIGIN}`
-  );
+// ---- single listen (no earlier listens anywhere) ----
+app.listen(PORT, HOST, () => {
+  console.log(`API server listening on http://${HOST}:${PORT}`);
 });
-
-console.log('Stripe key present?', !!process.env.STRIPE_SECRET_KEY);
