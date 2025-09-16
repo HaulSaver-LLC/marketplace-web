@@ -1,11 +1,11 @@
 import { parse } from '../../util/urlHelpers';
 import { verify } from '../../ducks/emailVerification.duck';
 
-// ================ Thunks ================ //
-
-export const loadData = (params, search) => {
-  const urlParams = parse(search);
-  const verificationToken = urlParams.t;
-  const token = verificationToken ? `${verificationToken}` : null;
-  return verify(token);
+export const loadData = (_params, search) => {
+  const { t } = parse(search || '');
+  if (!t) {
+    // no token: do not verify here; show "Check email" + "Resend" in UI
+    return Promise.resolve();
+  }
+  return verify(String(t));
 };

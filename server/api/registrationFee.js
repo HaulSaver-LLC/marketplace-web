@@ -22,6 +22,36 @@ const CURRENCY = String(process.env.REGISTRATION_FEE_CURRENCY || 'usd').toLowerC
 // JSON body parser for this router only
 router.use(express.json());
 
+// handler + routes
+async function registrationPIHandler(req, res) {
+  try {
+    const Stripe = require('stripe');
+    const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || '');
+    const { userId, email } = req.body || {};
+    if (!userId) return res.status(400).json({ error: 'Missing userId' });
+
+    const amount = Number(process.env.REGISTRATION_FEE_AMOUNT || 1000);
+    const currency = String(process.env.REGISTRATION_FEE_CURRENCY || 'usd').toLowerCase();
+
+    const pi = await stripe.paymentIntents.create({
+      amount,
+      currency,
+      description: 'HaulSaver registration fee',
+      receipt_email: email || undefined,
+      metadata: { userId, purpose: 'registration_fee' },
+      automatic_payment_methods: { enabled: true },
+    });
+
+    return res.json({ clientSecret: pi.client_secret, paymentIntentId: pi.id });
+  } catch (e) {
+    console.error('PI error:', e?.message);
+    return res.status(500).json({ error: 'Failed to create PaymentIntent' });
+  }
+}
+
+router.post('/registration/intent', registrationPIHandler);
+router.post('/registration-payment-intent', registrationPIHandler);
+
 // ----- helpers -----
 async function createRegistrationPI({ userId, email }) {
   // Verify account (useful for debugging mismatched keys)
@@ -110,6 +140,11 @@ router.post('/registration/intent', async (req, res) => {
   } catch (err) {
     return handleError(res, err);
   }
+});
+
+router.post('/registration-payment-intent', async (req, res) => {
+  // same logic as /registration/intent
+  return router.handle(req, res); // if your router won't allow this, just duplicate body 1:1
 });
 
 // Minimal alias for earlier docs: POST /api/intent
