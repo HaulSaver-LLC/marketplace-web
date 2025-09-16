@@ -168,5 +168,3 @@ app.listen(PORT, '0.0.0.0', () => {
   );
   console.log('Allowed CORS origins:', allowedOrigins);
 });
-
-console.log('Stripe key present?', !!process.env.STRIPE_SECRET_KEY);
