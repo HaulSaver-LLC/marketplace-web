@@ -137,3 +137,5 @@ app.listen(PORT, () => {
     }, Fee: ${FEE_AMOUNT} ${FEE_CURRENCY}, CORS origin: ${ORIGIN}`
   );
 });
+
+console.log('Stripe key present?', !!process.env.STRIPE_SECRET_KEY);
