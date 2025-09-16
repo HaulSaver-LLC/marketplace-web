@@ -160,11 +160,3 @@ app.use((err, _req, res, _next) => {
   console.error('Unhandled error:', err);
   res.status(500).json({ error: 'Internal error' });
 });
-
-app.listen(PORT, '0.0.0.0', () => {
-  console.log(`API server listening on http://localhost:${PORT}`);
-  console.log(
-    `Stripe: ${stripe ? 'configured' : 'NOT configured'}, Fee: ${FEE_AMOUNT} ${FEE_CURRENCY}`
-  );
-  console.log('Allowed CORS origins:', allowedOrigins);
-});
