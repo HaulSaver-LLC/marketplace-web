@@ -77,6 +77,7 @@ Desktop.ini
 .docusaurus/
 .env
 .env
+.env.development
 .env.*
 *.pem
 *.key

@@ -16,6 +16,9 @@ import NotFoundPage from '../containers/NotFoundPage/NotFoundPage';
 
 import LoadableComponentErrorBoundary from './LoadableComponentErrorBoundary/LoadableComponentErrorBoundary';
 
+// Registration Gating
+import { hasPaidRegistration } from '../util/paidRegistration';
+
 const isBanned = currentUser => {
   const isBrowser = typeof window !== 'undefined';
   // Future todo: currentUser?.attributes?.state === 'banned'
@@ -158,20 +161,27 @@ class RouteComponentRenderer extends Component {
     // Banned users are redirected to LandingPage
     const isBannedFromAuthPages = restrictedPageWithCurrentUser && isBanned(currentUser);
 
-    // --- Registration fee gate: block verification until paid ---
-    // Requires protectedData.registrationPaid === true on the user's profile
-    const isVerificationRoute = route?.name === 'RegisterActivatePage';
-    const registrationPaid = !!currentUser?.attributes?.profile?.protectedData?.registrationPaid;
-    if (isVerificationRoute && !registrationPaid) {
-      return <NamedRedirect name="RegistrationPaymentPage" />;
+    // --- Registration fee gate (general, uses route.requiresPaid) ---
+    const requiresPaid = !!route?.requiresPaid;
+    const isPaymentRoute = route?.name === 'RegistrationPaymentPage';
+    const userHasPaid = hasPaidRegistration(currentUser);
+
+    if (requiresPaid && hasCurrentUser && !userHasPaid && !isPaymentRoute) {
+      return (
+        <NamedRedirect
+          name="RegistrationPaymentPage"
+          state={{ from: `${location.pathname}${location.search}${location.hash}` }}
+        />
+      );
     }
-    // ------------------------------------------------------------
+    // ---------------------------------------------------------------
 
     return canShow ? (
       <LoadableComponentErrorBoundary>
         <RouteComponent
           params={match.params}
           location={location}
+          history={this.props.history}
           staticContext={staticContext}
           {...extraProps}
         />

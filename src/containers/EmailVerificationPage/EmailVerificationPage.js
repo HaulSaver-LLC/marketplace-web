@@ -41,18 +41,23 @@ export const EmailVerificationPageComponent = props => {
     emailVerificationInProgress,
     verificationError,
     location,
-    history, // from withRouter
+    history, // injected by withRouter
   } = props;
 
   const user = ensureCurrentUser(currentUser);
   const tokenFromUrl = parseVerificationToken(location ? location.search : null);
 
+  // Preserve ?from=... so payment page can bounce the user back afterward
+  const searchParams = new URLSearchParams(location?.search || '');
+  const from = searchParams.get('from') || '/profile-settings';
+
   // Redirect to /register/payment immediately after successful verification
   useEffect(() => {
     if (isVerified && user?.attributes?.emailVerified && user?.attributes?.pendingEmail == null) {
-      history.replace('/register/payment');
+      const to = `/register/payment${from ? `?from=${encodeURIComponent(from)}` : ''}`;
+      history.replace(to);
     }
-  }, [isVerified, user, history]);
+  }, [isVerified, user, history, from]);
 
   // Guard submit: ensure we only call verify when a token exists
   const handleSubmit = ({ verificationToken }) => {
@@ -128,11 +133,9 @@ const mapDispatchToProps = dispatch => ({
   submitVerification: ({ verificationToken }) => dispatch(verify(verificationToken)),
 });
 
-// withRouter must wrap connect
+// IMPORTANT: no top-level history usage here!
+// withRouter must wrap connect so the page receives { history, location, match }
 export default compose(
   withRouter,
-  connect(
-    mapStateToProps,
-    mapDispatchToProps
-  )
+  connect(mapStateToProps, mapDispatchToProps)
 )(EmailVerificationPageComponent);

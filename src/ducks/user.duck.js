@@ -71,6 +71,11 @@ const initialState = {
   sendVerificationEmailError: null,
 };
 
+export const selectHasPaidRegistration = state => {
+  const user = state.user.currentUser;
+  return hasPaidRegistration(user);
+};
+
 export default function reducer(state = initialState, action = {}) {
   const { type, payload } = action;
   switch (type) {

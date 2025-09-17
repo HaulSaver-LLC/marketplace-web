@@ -497,14 +497,11 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
 
     // Do not change this path! The API expects /verify-email
     {
-      path: '/verify-email',
-      name: 'EmailVerificationPage',
-      auth: true,
-      requiresPaid: true,
-      authPage: 'LoginPage',
-      component: EmailVerificationPage,
-      loadData: pageDataLoadingAPI.EmailVerificationPage.loadData,
-    },
+  path: '/verify-email',
+  name: 'EmailVerificationPage',
+  component: EmailVerificationPage,
+  loadData: pageDataLoadingAPI.EmailVerificationPage.loadData,
+},
 
     // Do not change this path! The API expects /preview
     {
