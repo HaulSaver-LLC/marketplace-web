@@ -193,6 +193,61 @@ const SignupFormComponent = props => (
                 userTypeConfig={userTypeConfig}
                 intl={intl}
               />
+
+              {/* Company-only fields */}
+              {isCompany ? (
+                <div className={css.companyFields}>
+                  <FieldTextInput
+                    className={css.row}
+                    type="text"
+                    id={formId ? `${formId}.companyName` : 'companyName'}
+                    name="companyName"
+                    autoComplete="organization"
+                    label={intl.formatMessage({ id: 'SignupForm.companyNameLabel' })}
+                    placeholder={intl.formatMessage({ id: 'SignupForm.companyNamePlaceholder' })}
+                    validate={validators.required(
+                      intl.formatMessage({ id: 'SignupForm.companyNameRequired' })
+                    )}
+                  />
+
+                  <FieldSelect
+                    className={css.row}
+                    id={formId ? `${formId}.companyType` : 'companyType'}
+                    name="companyType"
+                    label={intl.formatMessage({ id: 'SignupForm.companyTypeLabel' })}
+                    placeholder={intl.formatMessage({ id: 'SignupForm.companyTypePlaceholder' })}
+                    validate={validators.required(
+                      intl.formatMessage({ id: 'SignupForm.companyTypeRequired' })
+                    )}
+                  >
+                    <option value="" disabled>
+                      {intl.formatMessage({ id: 'SignupForm.companyTypePlaceholder' })}
+                    </option>
+                    <option value="ownerOperator">
+                      {intl.formatMessage({ id: 'SignupForm.companyType.ownerOperator' })}
+                    </option>
+                    <option value="smallFleet">
+                      {intl.formatMessage({ id: 'SignupForm.companyType.smallFleet' })}
+                    </option>
+                    <option value="largeFleet">
+                      {intl.formatMessage({ id: 'SignupForm.companyType.largeFleet' })}
+                    </option>
+                  </FieldSelect>
+
+                  <FieldTextInput
+                    className={css.row}
+                    type="text"
+                    id={formId ? `${formId}.taxId` : 'taxId'}
+                    name="taxId"
+                    autoComplete="off"
+                    label={intl.formatMessage({ id: 'SignupForm.taxIdLabel' })}
+                    placeholder={intl.formatMessage({ id: 'SignupForm.taxIdPlaceholder' })}
+                    validate={validators.required(
+                      intl.formatMessage({ id: 'SignupForm.taxIdRequired' })
+                    )}
+                  />
+                </div>
+              ) : null}
             </div>
           ) : null}
 

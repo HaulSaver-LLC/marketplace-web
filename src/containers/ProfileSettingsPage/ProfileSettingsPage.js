@@ -87,7 +87,21 @@ export const ProfileSettingsPageComponent = props => {
   const { userFields, userTypes = [] } = config.user;
 
   const handleSubmit = (values, userType) => {
-    const { firstName, lastName, displayName, bio: rawBio, ...rest } = values;
+    const {
+      firstName,
+      lastName,
+      displayName,
+      bio: rawBio,
+
+      // NEW: pluck company/account fields so we can wire them into publicData
+      accountType,
+      companyName,
+      companyType,
+      taxId,
+
+      // keep everything else for pickUserFieldsData
+      ...rest
+    } = values;
 
     const displayNameMaybe = displayName
       ? { displayName: displayName.trim() }
@@ -95,6 +109,21 @@ export const ProfileSettingsPageComponent = props => {
 
     // Ensure that the optional bio is a string
     const bio = rawBio || '';
+
+    // Build company public data only if Company is selected
+    const companyPublicData =
+      accountType === 'company'
+        ? {
+            companyName: (companyName || '').trim(),
+            companyType: companyType || '',
+            taxId: (taxId || '').trim(),
+          }
+        : {
+            // optional: clear when switching back to Individual
+            companyName: null,
+            companyType: null,
+            taxId: null,
+          };
 
     const profile = {
       firstName: firstName.trim(),
@@ -156,6 +185,12 @@ export const ProfileSettingsPageComponent = props => {
         ...initialValuesForUserFields(publicData, 'public', userType, userFields),
         ...initialValuesForUserFields(protectedData, 'protected', userType, userFields),
         ...initialValuesForUserFields(privateData, 'private', userType, userFields),
+
+        // NEW: prefill from publicData so the form shows saved values
+        accountType: publicData?.accountType || '',
+        companyName: publicData?.companyName || '',
+        companyType: publicData?.companyType || '',
+        taxId: publicData?.taxId || '',
       }}
       profileImage={profileImage}
       onImageUpload={e => onImageUploadHandler(e, onImageUpload)}
@@ -228,11 +263,8 @@ const mapDispatchToProps = dispatch => ({
   onUpdateProfile: data => dispatch(updateProfile(data)),
 });
 
-const ProfileSettingsPage = compose(
-  connect(
-    mapStateToProps,
-    mapDispatchToProps
-  )
-)(ProfileSettingsPageComponent);
+const ProfileSettingsPage = compose(connect(mapStateToProps, mapDispatchToProps))(
+  ProfileSettingsPageComponent
+);
 
 export default ProfileSettingsPage;

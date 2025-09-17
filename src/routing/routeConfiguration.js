@@ -4,7 +4,12 @@ import loadable from '@loadable/component';
 import getPageDataLoadingAPI from '../containers/pageDataLoadingAPI';
 import NotFoundPage from '../containers/NotFoundPage/NotFoundPage';
 import PreviewResolverPage from '../containers/PreviewResolverPage/PreviewResolverPage';
+<<<<<<< HEAD
 import ComingSoonPage from '../containers/ComingSoonPage/ComingSoonPage';
+=======
+import ProviderSignupPage from '../containers/ProviderSignupPage/ProviderSignupPage';
+import ShipperSignupPage from '../containers/ShipperSignupPage/ShipperSignupPage';
+>>>>>>> origin/develop
 
 // routeConfiguration needs to initialize containers first
 // Otherwise, components will import form container eventually and
@@ -13,33 +18,88 @@ import { NamedRedirect } from '../components';
 
 const pageDataLoadingAPI = getPageDataLoadingAPI();
 
-const AuthenticationPage = loadable(() => import(/* webpackChunkName: "AuthenticationPage" */ '../containers/AuthenticationPage/AuthenticationPage'));
-const CheckoutPage = loadable(() => import(/* webpackChunkName: "CheckoutPage" */ '../containers/CheckoutPage/CheckoutPage'));
-const CMSPage = loadable(() => import(/* webpackChunkName: "CMSPage" */ '../containers/CMSPage/CMSPage'));
-const ContactDetailsPage = loadable(() => import(/* webpackChunkName: "ContactDetailsPage" */ '../containers/ContactDetailsPage/ContactDetailsPage'));
-const EditListingPage = loadable(() => import(/* webpackChunkName: "EditListingPage" */ '../containers/EditListingPage/EditListingPage'));
-const EmailVerificationPage = loadable(() => import(/* webpackChunkName: "EmailVerificationPage" */ '../containers/EmailVerificationPage/EmailVerificationPage'));
-const InboxPage = loadable(() => import(/* webpackChunkName: "InboxPage" */ '../containers/InboxPage/InboxPage'));
-const LandingPage = loadable(() => import(/* webpackChunkName: "LandingPage" */ '../containers/LandingPage/LandingPage'));
-const ListingPageCoverPhoto = loadable(() => import(/* webpackChunkName: "ListingPageCoverPhoto" */ /* webpackPrefetch: true */ '../containers/ListingPage/ListingPageCoverPhoto'));
-const ListingPageCarousel = loadable(() => import(/* webpackChunkName: "ListingPageCarousel" */ /* webpackPrefetch: true */ '../containers/ListingPage/ListingPageCarousel'));
-const ManageListingsPage = loadable(() => import(/* webpackChunkName: "ManageListingsPage" */ '../containers/ManageListingsPage/ManageListingsPage'));
-const PasswordChangePage = loadable(() => import(/* webpackChunkName: "PasswordChangePage" */ '../containers/PasswordChangePage/PasswordChangePage'));
-const PasswordRecoveryPage = loadable(() => import(/* webpackChunkName: "PasswordRecoveryPage" */ '../containers/PasswordRecoveryPage/PasswordRecoveryPage'));
-const PasswordResetPage = loadable(() => import(/* webpackChunkName: "PasswordResetPage" */ '../containers/PasswordResetPage/PasswordResetPage'));
-const PaymentMethodsPage = loadable(() => import(/* webpackChunkName: "PaymentMethodsPage" */ '../containers/PaymentMethodsPage/PaymentMethodsPage'));
-const PrivacyPolicyPage = loadable(() => import(/* webpackChunkName: "PrivacyPolicyPage" */ '../containers/PrivacyPolicyPage/PrivacyPolicyPage'));
-const ProfilePage = loadable(() => import(/* webpackChunkName: "ProfilePage" */ '../containers/ProfilePage/ProfilePage'));
-const ProfileSettingsPage = loadable(() => import(/* webpackChunkName: "ProfileSettingsPage" */ '../containers/ProfileSettingsPage/ProfileSettingsPage'));
-const SearchPageWithMap = loadable(() => import(/* webpackChunkName: "SearchPageWithMap" */ /* webpackPrefetch: true */  '../containers/SearchPage/SearchPageWithMap'));
-const SearchPageWithGrid = loadable(() => import(/* webpackChunkName: "SearchPageWithGrid" */ /* webpackPrefetch: true */  '../containers/SearchPage/SearchPageWithGrid'));
-const StripePayoutPage = loadable(() => import(/* webpackChunkName: "StripePayoutPage" */ '../containers/StripePayoutPage/StripePayoutPage'));
-const TermsOfServicePage = loadable(() => import(/* webpackChunkName: "TermsOfServicePage" */ '../containers/TermsOfServicePage/TermsOfServicePage'));
-const TransactionPage = loadable(() => import(/* webpackChunkName: "TransactionPage" */ '../containers/TransactionPage/TransactionPage'));
-const NoAccessPage = loadable(() => import(/* webpackChunkName: "NoAccessPage" */ '../containers/NoAccessPage/NoAccessPage'));
+const AuthenticationPage = loadable(() =>
+  import(/* webpackChunkName: "AuthenticationPage" */ '../containers/AuthenticationPage/AuthenticationPage')
+);
+const CheckoutPage = loadable(() =>
+  import(/* webpackChunkName: "CheckoutPage" */ '../containers/CheckoutPage/CheckoutPage')
+);
+const CMSPage = loadable(() =>
+  import(/* webpackChunkName: "CMSPage" */ '../containers/CMSPage/CMSPage')
+);
+const ContactDetailsPage = loadable(() =>
+  import(/* webpackChunkName: "ContactDetailsPage" */ '../containers/ContactDetailsPage/ContactDetailsPage')
+);
+const EditListingPage = loadable(() =>
+  import(/* webpackChunkName: "EditListingPage" */ '../containers/EditListingPage/EditListingPage')
+);
+const EmailVerificationPage = loadable(() =>
+  import(/* webpackChunkName: "EmailVerificationPage" */ '../containers/EmailVerificationPage/EmailVerificationPage')
+);
+const InboxPage = loadable(() =>
+  import(/* webpackChunkName: "InboxPage" */ '../containers/InboxPage/InboxPage')
+);
+const LandingPage = loadable(() =>
+  import(/* webpackChunkName: "LandingPage" */ '../containers/LandingPage/LandingPage')
+);
+const ListingPageCoverPhoto = loadable(() =>
+  import(/* webpackChunkName: "ListingPageCoverPhoto" */ /* webpackPrefetch: true */ '../containers/ListingPage/ListingPageCoverPhoto')
+);
+const ListingPageCarousel = loadable(() =>
+  import(/* webpackChunkName: "ListingPageCarousel" */ /* webpackPrefetch: true */ '../containers/ListingPage/ListingPageCarousel')
+);
+const ManageListingsPage = loadable(() =>
+  import(/* webpackChunkName: "ManageListingsPage" */ '../containers/ManageListingsPage/ManageListingsPage')
+);
+const PasswordChangePage = loadable(() =>
+  import(/* webpackChunkName: "PasswordChangePage" */ '../containers/PasswordChangePage/PasswordChangePage')
+);
+const PasswordRecoveryPage = loadable(() =>
+  import(/* webpackChunkName: "PasswordRecoveryPage" */ '../containers/PasswordRecoveryPage/PasswordRecoveryPage')
+);
+const PasswordResetPage = loadable(() =>
+  import(/* webpackChunkName: "PasswordResetPage" */ '../containers/PasswordResetPage/PasswordResetPage')
+);
+const PaymentMethodsPage = loadable(() =>
+  import(/* webpackChunkName: "PaymentMethodsPage" */ '../containers/PaymentMethodsPage/PaymentMethodsPage')
+);
+const PrivacyPolicyPage = loadable(() =>
+  import(/* webpackChunkName: "PrivacyPolicyPage" */ '../containers/PrivacyPolicyPage/PrivacyPolicyPage')
+);
+const ProfilePage = loadable(() =>
+  import(/* webpackChunkName: "ProfilePage" */ '../containers/ProfilePage/ProfilePage')
+);
+const ProfileSettingsPage = loadable(() =>
+  import(/* webpackChunkName: "ProfileSettingsPage" */ '../containers/ProfileSettingsPage/ProfileSettingsPage')
+);
+const SearchPageWithMap = loadable(() =>
+  import(/* webpackChunkName: "SearchPageWithMap" */ /* webpackPrefetch: true */ '../containers/SearchPage/SearchPageWithMap')
+);
+const SearchPageWithGrid = loadable(() =>
+  import(/* webpackChunkName: "SearchPageWithGrid" */ /* webpackPrefetch: true */ '../containers/SearchPage/SearchPageWithGrid')
+);
+const StripePayoutPage = loadable(() =>
+  import(/* webpackChunkName: "StripePayoutPage" */ '../containers/StripePayoutPage/StripePayoutPage')
+);
+const TermsOfServicePage = loadable(() =>
+  import(/* webpackChunkName: "TermsOfServicePage" */ '../containers/TermsOfServicePage/TermsOfServicePage')
+);
+const TransactionPage = loadable(() =>
+  import(/* webpackChunkName: "TransactionPage" */ '../containers/TransactionPage/TransactionPage')
+);
+const NoAccessPage = loadable(() =>
+  import(/* webpackChunkName: "NoAccessPage" */ '../containers/NoAccessPage/NoAccessPage')
+);
+
+// NEW: Registration payment step (after signup, before verification)
+const RegistrationPaymentPage = loadable(() =>
+  import(/* webpackChunkName: "RegistrationPaymentPage" */ '../containers/RegistrationPaymentPage/RegistrationPaymentPage')
+);
 
 // Styleguide helps you to review current components and develop new ones
-const StyleguidePage = loadable(() => import(/* webpackChunkName: "StyleguidePage" */ '../containers/StyleguidePage/StyleguidePage'));
+const StyleguidePage = loadable(() =>
+  import(/* webpackChunkName: "StyleguidePage" */ '../containers/StyleguidePage/StyleguidePage')
+);
 
 export const ACCOUNT_SETTINGS_PAGES = [
   'ContactDetailsPage',
@@ -54,25 +114,17 @@ const draftSlug = 'draft';
 
 const RedirectToLandingPage = () => <NamedRedirect name="LandingPage" />;
 
-// NOTE: Most server-side endpoints are prefixed with /api. Requests to those
-// endpoints are indended to be handled in the server instead of the browser and
-// they will not render the application. So remember to avoid routes starting
-// with /api and if you encounter clashing routes see server/index.js if there's
-// a conflicting route defined there.
-
 // Our routes are exact by default.
 // See behaviour from Routes.js where Route is created.
 const routeConfiguration = (layoutConfig, accessControlConfig) => {
-  const SearchPage = layoutConfig.searchPage?.variantType === 'map' 
-    ? SearchPageWithMap 
-    : SearchPageWithGrid;
-  const ListingPage = layoutConfig.listingPage?.variantType === 'carousel' 
-    ? ListingPageCarousel 
-    : ListingPageCoverPhoto;
+  const SearchPage =
+    layoutConfig.searchPage?.variantType === 'map' ? SearchPageWithMap : SearchPageWithGrid;
+  const ListingPage =
+    layoutConfig.listingPage?.variantType === 'carousel' ? ListingPageCarousel : ListingPageCoverPhoto;
 
   const isPrivateMarketplace = accessControlConfig?.marketplace?.private === true;
   const authForPrivateMarketplace = isPrivateMarketplace ? { auth: true } : {};
-  
+
   return [
     {
       path: '/',
@@ -124,6 +176,7 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/l/:slug/:id/checkout',
       name: 'CheckoutPage',
       auth: true,
+      requiresPaid: true,
       component: CheckoutPage,
       setInitialValues: pageDataLoadingAPI.CheckoutPage.setInitialValues,
     },
@@ -131,6 +184,7 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/l/:slug/:id/:variant',
       name: 'ListingPageVariant',
       auth: true,
+      requiresPaid: true,
       authPage: 'LoginPage',
       component: ListingPage,
       loadData: pageDataLoadingAPI.ListingPage.loadData,
@@ -139,6 +193,7 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/l/new',
       name: 'NewListingPage',
       auth: true,
+      requiresPaid: true,
       component: () => (
         <NamedRedirect
           name="EditListingPage"
@@ -150,6 +205,7 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/l/:slug/:id/:type/:tab',
       name: 'EditListingPage',
       auth: true,
+      requiresPaid: true,
       component: EditListingPage,
       loadData: pageDataLoadingAPI.EditListingPage.loadData,
     },
@@ -157,6 +213,7 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/l/:slug/:id/:type/:tab/:returnURLType',
       name: 'EditListingStripeOnboardingPage',
       auth: true,
+      requiresPaid: true,
       component: EditListingPage,
       loadData: pageDataLoadingAPI.EditListingPage.loadData,
     },
@@ -186,6 +243,7 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/u/:id/:variant',
       name: 'ProfilePageVariant',
       auth: true,
+      requiresPaid: true,
       component: ProfilePage,
       loadData: pageDataLoadingAPI.ProfilePage.loadData,
     },
@@ -193,13 +251,12 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/profile-settings',
       name: 'ProfileSettingsPage',
       auth: true,
+      requiresPaid: true,
       authPage: 'LoginPage',
       component: ProfileSettingsPage,
     },
 
     // Note: authenticating with IdP (e.g. Facebook) expects that /login path exists
-    // so that in the error case users can be redirected back to the LoginPage
-    // In case you change this, remember to update the route in server/api/auth/loginWithIdp.js
     {
       path: '/login',
       name: 'LoginPage',
@@ -232,10 +289,13 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       name: 'PasswordRecoveryPage',
       component: PasswordRecoveryPage,
     },
+
+    // Inbox
     {
       path: '/inbox',
       name: 'InboxBasePage',
       auth: true,
+      requiresPaid: true,
       authPage: 'LoginPage',
       component: () => <NamedRedirect name="InboxPage" params={{ tab: 'sales' }} />,
     },
@@ -243,25 +303,33 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/inbox/:tab',
       name: 'InboxPage',
       auth: true,
+      requiresPaid: true,
       authPage: 'LoginPage',
       component: InboxPage,
       loadData: pageDataLoadingAPI.InboxPage.loadData,
     },
+
+    // Transactions
     {
       path: '/order/:id',
       name: 'OrderDetailsPage',
       auth: true,
+      requiresPaid: true,
       authPage: 'LoginPage',
       component: TransactionPage,
       extraProps: { transactionRole: 'customer' },
       loadData: (params, ...rest) =>
-        pageDataLoadingAPI.TransactionPage.loadData({ ...params, transactionRole: 'customer' }, ...rest),
+        pageDataLoadingAPI.TransactionPage.loadData(
+          { ...params, transactionRole: 'customer' },
+          ...rest
+        ),
       setInitialValues: pageDataLoadingAPI.TransactionPage.setInitialValues,
     },
     {
       path: '/order/:id/details',
       name: 'OrderDetailsPageRedirect',
       auth: true,
+      requiresPaid: true,
       authPage: 'LoginPage',
       component: props => <NamedRedirect name="OrderDetailsPage" params={{ id: props.params?.id }} />,
     },
@@ -269,6 +337,7 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/sale/:id',
       name: 'SaleDetailsPage',
       auth: true,
+      requiresPaid: true,
       authPage: 'LoginPage',
       component: TransactionPage,
       extraProps: { transactionRole: 'provider' },
@@ -278,21 +347,28 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/sale/:id/details',
       name: 'SaleDetailsPageRedirect',
       auth: true,
+      requiresPaid: true,
       authPage: 'LoginPage',
       component: props => <NamedRedirect name="SaleDetailsPage" params={{ id: props.params?.id }} />,
     },
+
+    // Listings management
     {
       path: '/listings',
       name: 'ManageListingsPage',
       auth: true,
+      requiresPaid: true,
       authPage: 'LoginPage',
       component: ManageListingsPage,
       loadData: pageDataLoadingAPI.ManageListingsPage.loadData,
     },
+
+    // Account settings
     {
       path: '/account',
       name: 'AccountSettingsPage',
       auth: true,
+      requiresPaid: true,
       authPage: 'LoginPage',
       component: () => <NamedRedirect name="ContactDetailsPage" />,
     },
@@ -300,6 +376,7 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/account/contact-details',
       name: 'ContactDetailsPage',
       auth: true,
+      requiresPaid: true,
       authPage: 'LoginPage',
       component: ContactDetailsPage,
       loadData: pageDataLoadingAPI.ContactDetailsPage.loadData,
@@ -308,6 +385,7 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/account/change-password',
       name: 'PasswordChangePage',
       auth: true,
+      requiresPaid: true,
       authPage: 'LoginPage',
       component: PasswordChangePage,
     },
@@ -315,6 +393,7 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/account/payments',
       name: 'StripePayoutPage',
       auth: true,
+      requiresPaid: true,
       authPage: 'LoginPage',
       component: StripePayoutPage,
       loadData: pageDataLoadingAPI.StripePayoutPage.loadData,
@@ -323,6 +402,7 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/account/payments/:returnURLType',
       name: 'StripePayoutOnboardingPage',
       auth: true,
+      requiresPaid: true,
       authPage: 'LoginPage',
       component: StripePayoutPage,
       loadData: pageDataLoadingAPI.StripePayoutPage.loadData,
@@ -331,10 +411,13 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       path: '/account/payment-methods',
       name: 'PaymentMethodsPage',
       auth: true,
+      requiresPaid: true,
       authPage: 'LoginPage',
       component: PaymentMethodsPage,
       loadData: pageDataLoadingAPI.PaymentMethodsPage.loadData,
     },
+
+    // Legal
     {
       path: '/terms-of-service',
       name: 'TermsOfServicePage',
@@ -347,6 +430,8 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       component: PrivacyPolicyPage,
       loadData: pageDataLoadingAPI.PrivacyPolicyPage.loadData,
     },
+
+    // Styleguide
     {
       path: '/styleguide',
       name: 'Styleguide',
@@ -378,6 +463,8 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       component: StyleguidePage,
       extraProps: { raw: true },
     },
+
+    // Access control & misc
     {
       path: '/no-:missingAccessRight',
       name: 'NoAccessPage',
@@ -389,33 +476,51 @@ const routeConfiguration = (layoutConfig, accessControlConfig) => {
       component: props => <NotFoundPage {...props} />,
     },
 
-    // Do not change this path!
-    //
-    // The API expects that the application implements /reset-password endpoint
+    // Carrier/Provider Signup page
+    {
+      path: '/signup/provider',
+      name: 'ProviderSignupPage',
+      component: ProviderSignupPage,
+    },
+
+    // Shipper or Customer Signup page
+    {
+      path: '/signup/shipper',
+      name: 'ShipperSignupPage',
+      component: ShipperSignupPage,
+    },
+
+    // NEW: Registration payment step (after signup, before verification)
+    {
+      path: '/register/payment',
+      name: 'RegistrationPaymentPage',
+      auth: true,
+      component: RegistrationPaymentPage,
+    },
+
+    // Do not change this path! The API expects /reset-password
     {
       path: '/reset-password',
       name: 'PasswordResetPage',
-      component: PasswordResetPage ,
+      component: PasswordResetPage,
     },
 
-    // Do not change this path!
-    //
-    // The API expects that the application implements /verify-email endpoint
+    // Do not change this path! The API expects /verify-email
     {
       path: '/verify-email',
       name: 'EmailVerificationPage',
       auth: true,
+      requiresPaid: true,
       authPage: 'LoginPage',
       component: EmailVerificationPage,
       loadData: pageDataLoadingAPI.EmailVerificationPage.loadData,
     },
-    // Do not change this path!
-    //
-    // The API expects that the application implements /preview endpoint
+
+    // Do not change this path! The API expects /preview
     {
       path: '/preview',
       name: 'PreviewResolverPage',
-      component: PreviewResolverPage ,
+      component: PreviewResolverPage,
     },
   ];
 };

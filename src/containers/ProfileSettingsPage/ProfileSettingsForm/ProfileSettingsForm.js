@@ -26,7 +26,28 @@ import {
 import css from './ProfileSettingsForm.module.css';
 
 const ACCEPT_IMAGES = 'image/*';
-const UPLOAD_CHANGE_DELAY = 2000; // Show spinner so that browser has time to load img srcset
+const UPLOAD_CHANGE_DELAY = 2000;
+
+// Map a stored companyType (either a code like "dealer" or a translation id like
+// "ProfileSettingsForm.companyType.dealer") to a human label.
+const formatCompanyType = (type, intl) => {
+  if (!type) return '—';
+
+  // If the value is already an i18n id, translate it (with fallback to last segment)
+  if (typeof type === 'string' && type.startsWith('ProfileSettingsForm.companyType.')) {
+    const fallback = type.split('.').pop();
+    return intl.formatMessage({ id: type, defaultMessage: fallback });
+  }
+
+  // Otherwise assume it's one of our codes
+  const idMap = {
+    ownerOperator: 'ProfileSettingsForm.companyType.ownerOperator',
+    smallFleet: 'ProfileSettingsForm.companyType.smallFleet',
+    largeFleet: 'ProfileSettingsForm.companyType.largeFleet',
+  };
+  const id = idMap[type];
+  return id ? intl.formatMessage({ id, defaultMessage: type }) : type;
+};
 
 const DisplayNameMaybe = props => {
   const { userTypeConfig, intl } = props;
@@ -183,6 +204,13 @@ class ProfileSettingsFormComponent extends Component {
           const bioPlaceholder = intl.formatMessage({
             id: 'ProfileSettingsForm.bioPlaceholder',
           });
+
+          // Read-only company data (from values/publicData)
+          const accountType = values?.accountType || values?.publicData?.accountType || '';
+          const isCompany = accountType === 'company';
+          const companyName = values?.companyName || values?.publicData?.companyName || '';
+          const companyType = values?.companyType || values?.publicData?.companyType || '';
+          const taxId = values?.taxId || values?.publicData?.taxId || '';
 
           const uploadingOverlay =
             uploadInProgress || this.state.uploadDelay ? (
@@ -375,6 +403,52 @@ class ProfileSettingsFormComponent extends Component {
 
               <DisplayNameMaybe userTypeConfig={userTypeConfig} intl={intl} />
 
+              {/* READ-ONLY Company info */}
+              {isCompany ? (
+                <div className={css.sectionContainer}>
+                  <H4 as="h2" className={css.sectionTitle}>
+                    <FormattedMessage
+                      id="ProfileSettingsForm.companySectionHeading"
+                      defaultMessage="Company information"
+                    />
+                  </H4>
+
+                  <div className={css.row}>
+                    <strong>
+                      {intl.formatMessage({
+                        id: 'ProfileSettingsForm.companyNameLabel',
+                        defaultMessage: 'Company name',
+                      })}
+                      :
+                    </strong>{' '}
+                    <span>{companyName || '—'}</span>
+                  </div>
+
+                  <div className={css.row}>
+                    <strong>
+                      {intl.formatMessage({
+                        id: 'ProfileSettingsForm.companyTypeLabel',
+                        defaultMessage: 'Company type',
+                      })}
+                      :
+                    </strong>{' '}
+                    <span>{formatCompanyType(companyType, intl)}</span>
+                  </div>
+
+                  <div className={css.row}>
+                    <strong>
+                      {intl.formatMessage({
+                        id: 'ProfileSettingsForm.taxIdLabel',
+                        defaultMessage: 'Tax ID',
+                      })}
+                      :
+                    </strong>{' '}
+                    <span>{taxId || '—'}</span>
+                  </div>
+                </div>
+              ) : null}
+
+              {/* Bio */}
               <div className={classNames(css.sectionContainer)}>
                 <H4 as="h2" className={css.sectionTitle}>
                   <FormattedMessage id="ProfileSettingsForm.bioHeading" />

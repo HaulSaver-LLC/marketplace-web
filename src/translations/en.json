@@ -1184,5 +1184,41 @@
   "UserDisplayName.deleted": "Deleted user",
   "UserNav.accountSettings": "Account settings",
   "UserNav.profileSettings": "Profile settings",
-  "UserNav.yourListings": "Your listings"
+  "UserNav.yourListings": "Your listings",
+
+  "SignupForm.accountTypeLabel": "Account type",
+  "SignupForm.accountTypePlaceholder": "Select account type",
+  "SignupForm.accountTypeRequired": "Account type is required",
+  "SignupForm.accountType.individual": "Individual",
+  "SignupForm.accountType.company": "Company",
+
+  "SignupForm.companyNameLabel": "Company name",
+  "SignupForm.companyNamePlaceholder": "e.g., HaulSaver Logistics",
+  "SignupForm.companyNameRequired": "Company name is required",
+
+  "SignupForm.companyTypeLabel": "Company type",
+  "SignupForm.companyTypePlaceholder": "Select company type",
+  "SignupForm.companyTypeRequired": "Company type is required",
+  "SignupForm.companyType.ownerOperator": "Owner Operator",
+  "SignupForm.companyType.smallFleet": "Small Fleet",
+  "SignupForm.companyType.largeFleet": "Large Fleet",
+
+  "SignupForm.taxIdLabel": "Tax ID",
+  "SignupForm.taxIdPlaceholder": "e.g., TIN / EIN",
+  "SignupForm.taxIdRequired": "Tax ID is required",
+
+  "SignupForm.businessRegNoLabel": "Business registration number",
+  "SignupForm.businessRegNoPlaceholder": "e.g., SEC / DTI / LLC number",
+  "SignupForm.businessRegNoRequired": "Business registration number is required",
+
+  "ProfilePage.companyInfo.title": "Company information",
+  "ProfilePage.companyInfo.companyName": "Company name",
+  "ProfilePage.companyInfo.companyType": "Company type",
+  "ProfilePage.companyInfo.taxId": "Tax ID",
+  "ProfilePage.companyInfo.businessRegNo": "Business registration number",
+
+  "ProfilePage.companyType.ownerOperator": "Owner Operator",
+  "ProfilePage.companyType.smallFleet": "Small Fleet",
+  "ProfilePage.companyType.largeFleet": "Large Fleet",
+  "ProfilePage.companyType.unknown": "Other"
 }
