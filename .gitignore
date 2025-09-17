@@ -76,3 +76,10 @@ Desktop.ini
 .serverless/
 .docusaurus/
 .env
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.crt
+.vercel/
