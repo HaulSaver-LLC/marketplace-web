@@ -45,6 +45,7 @@ const renderer = require('./renderer');
 const dataLoader = require('./dataLoader');
 const { generateCSPNonce, csp } = require('./csp');
 const sdkUtils = require('./api-util/sdk');
+const registrationFeeApi = require('./api/registrationFee');
 
 const buildPath = path.resolve(__dirname, '..', 'build');
 const dev = process.env.REACT_APP_ENV === 'development';
@@ -92,6 +93,9 @@ app.use(
     return res.status(404).send(errorPage404);
   }
 );
+
+// after app initialization & before SSR handler
+app.use('/api/registration', registrationFeeApi);
 
 // The helmet middleware sets various HTTP headers to improve security.
 // See: https://www.npmjs.com/package/helmet
@@ -318,6 +322,8 @@ const server = app.listen(PORT, () => {
     console.log(`Open http://localhost:${PORT}/ and start hacking!`);
   }
 });
+// server/index.js  (prod SSR server)
+app.use('/api', require('./apiRouter'));
 
 // Graceful shutdown:
 // https://expressjs.com/en/advanced/healthcheck-graceful-shutdown.html

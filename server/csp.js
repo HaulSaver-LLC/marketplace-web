@@ -9,29 +9,19 @@ const data = 'data:';
 const blob = 'blob:';
 const devImagesMaybe = dev ? ['*.localhost:8000'] : [];
 const baseUrl = process.env.REACT_APP_SHARETRIBE_SDK_BASE_URL || 'https://flex-api.sharetribe.com';
-// Asset Delivery API is using a different domain than other Sharetribe APIs
-// cdn.st-api.com
-// If assetCdnBaseUrl is used to initialize SDK (for proxy purposes), then that URL needs to be in CSP
+// If you proxy the Asset Delivery API, include that base here too
 const assetCdnBaseUrl = process.env.REACT_APP_SHARETRIBE_SDK_ASSET_CDN_BASE_URL;
 
 exports.generateCSPNonce = (req, res, next) => {
-  // Asynchronously generate a unique nonce for each request.
+  // Generate a unique nonce for each request (base64 is typical)
   crypto.randomBytes(32, (err, randomBytes) => {
-    if (err) {
-      // If there was a problem, bail.
-      next(err);
-    } else {
-      // Save the nonce, as a hex string, to `res.locals` for later.
-      res.locals.cspNonce = randomBytes.toString('hex');
-      next();
-    }
+    if (err) return next(err);
+    res.locals.cspNonce = randomBytes.toString('base64');
+    next();
   });
 };
 
-// Default CSP whitelist.
-//
-// NOTE: Do not change these in the customizations, make custom
-// additions within the exported function in the bottom of this file.
+// Default CSP whitelist (keep comprehensive here; override in exports.csp)
 const defaultDirectives = {
   baseUri: [self],
   defaultSrc: [self],
@@ -41,29 +31,31 @@ const defaultDirectives = {
     baseUrl,
     assetCdnBaseUrl,
     '*.st-api.com',
+    'https://cdn.st-api.com',
     'maps.googleapis.com',
     'places.googleapis.com',
     '*.tiles.mapbox.com',
     'api.mapbox.com',
     'events.mapbox.com',
 
-    // Google Analytics
-    // TODO: Signals support needs more work
-    // https://developers.google.com/tag-platform/security/guides/csp
+    // Google Analytics / GTM
     '*.google-analytics.com',
     '*.analytics.google.com',
     '*.googletagmanager.com',
     '*.g.doubleclick.net',
     '*.google.com',
 
-    // Plausible analytics
+    // Plausible
     'plausible.io',
     '*.plausible.io',
 
     'fonts.googleapis.com',
 
+    // Sentry
     'sentry.io',
     '*.sentry.io',
+
+    // Stripe
     '*.stripe.com',
   ],
   fontSrc: [self, data, 'assets-sharetribecom.sharetribe.com', 'fonts.gstatic.com'],
@@ -81,12 +73,14 @@ const defaultDirectives = {
     blob,
     ...devImagesMaybe,
     '*.imgix.net',
-    'sharetribe.imgix.net', // Safari 9.1 didn't recognize asterisk rule.
+    'sharetribe.imgix.net', // Safari 9.1 didn’t recognize wildcard rule
+    'https://sharetribe-assets.imgix.net',
 
     // Styleguide placeholder images
     'picsum.photos',
     '*.picsum.photos',
 
+    // Maps
     'api.mapbox.com',
     'maps.googleapis.com',
     '*.gstatic.com',
@@ -96,7 +90,7 @@ const defaultDirectives = {
     // Giphy
     '*.giphy.com',
 
-    // Google Analytics
+    // Google Analytics / GTM
     '*.google-analytics.com',
     '*.analytics.google.com',
     '*.googletagmanager.com',
@@ -104,7 +98,7 @@ const defaultDirectives = {
     '*.google.com',
     'google.com',
 
-    // Youtube (static image)
+    // YouTube thumbs
     '*.ytimg.com',
 
     // Stripe
@@ -112,7 +106,7 @@ const defaultDirectives = {
   ],
   scriptSrc: [
     self,
-    (req, res) => `'nonce-${res.locals.cspNonce}'`,
+    // nonce will be injected at runtime in exports.csp
     unsafeEval,
     'maps.googleapis.com',
     'api.mapbox.com',
@@ -125,46 +119,70 @@ const defaultDirectives = {
     'plausible.io',
   ],
   styleSrc: [self, unsafeInline, 'fonts.googleapis.com', 'api.mapbox.com'],
+
+  // These are useful but can also be added in exports.csp if you prefer
+  workerSrc: [self, blob],
+  manifestSrc: [self],
 };
 
 /**
  * Middleware for creating a Content Security Policy
  *
- * @param {String} reportUri URL where the browser will POST the
- * policy violation reports
- *
- * @param {Boolean} reportOnly In the report mode, requests are only
- * reported to the report URL instead of blocked
+ * @param {String} reportUri URL where the browser will POST violation reports (optional)
+ * @param {Boolean} reportOnly If true, only reports are sent (no blocking)
  */
 exports.csp = (reportUri, reportOnly) => {
-  // ================ START CUSTOM CSP URLs ================ //
+  // ====== CUSTOM OVERRIDES GO HERE IF YOU NEED THEM ======
+  // Example:
+  // const customDirectives = {
+  //   imgSrc: defaultDirectives.imgSrc.concat('my-extra.cdn.example'),
+  // };
+  const customDirectives = {};
+  // =======================================================
 
-  // Add custom CSP whitelisted URLs here. See commented example
-  // below. For format specs and examples, see:
-  // https://content-security-policy.com/
+  // Start from the comprehensive defaults and apply overrides
+  const directives = Object.assign({}, defaultDirectives, customDirectives);
 
-  // Example: extend default img directive with custom domain
-  // const { imgSrc = [self] } = defaultDirectives;
-  // const exampleImgSrc = imgSrc.concat('my-custom-domain.example.com');
+  // Inject the per-request nonce into script-src (keep everything else you already allow)
+  directives.scriptSrc = [
+    ...(directives.scriptSrc || [self]),
+    (req, res) => `'nonce-${res.locals.cspNonce}'`,
+  ];
 
-  const customDirectives = {
-    // Example: Add custom directive override
-    // imgSrc: exampleImgSrc,
-  };
+  // Ensure critical hosts are present explicitly (idempotent)
+  directives.connectSrc = Array.from(
+    new Set(
+      [
+        ...(directives.connectSrc || [self]),
+        baseUrl,
+        assetCdnBaseUrl,
+        'https://cdn.st-api.com',
+      ].filter(Boolean)
+    )
+  );
 
-  // ================ END CUSTOM CSP URLs ================ //
+  directives.imgSrc = Array.from(
+    new Set([...(directives.imgSrc || [self, data]), 'https://sharetribe-assets.imgix.net'])
+  );
 
-  // Helmet v4 expects every value to be iterable so strings or booleans are not supported directly
-  // If we want to add block-all-mixed-content directive we need to add empty array to directives
-  // See Helmet's default directives:
-  // https://github.com/helmetjs/helmet/blob/bdb09348c17c78698b0c94f0f6cc6b3968cd43f9/middlewares/content-security-policy/index.ts#L51
+  // Stripe iframe
+  directives.frameSrc = Array.from(
+    new Set([...(directives.frameSrc || [self]), 'https://js.stripe.com'])
+  );
 
-  const directives = Object.assign({ reportUri: [reportUri] }, defaultDirectives, customDirectives);
+  // PWA + workers
+  directives.workerSrc = Array.from(new Set([...(directives.workerSrc || []), blob, self]));
+  directives.manifestSrc = Array.from(new Set([...(directives.manifestSrc || []), self]));
+
+  // Report URI (Helmet requires iterable)
+  if (reportUri) directives.reportUri = [reportUri];
+
+  // In production block mode, upgrade insecure requests
   if (!reportOnly && !dev) {
     directives.upgradeInsecureRequests = [];
   }
 
-  // See: https://helmetjs.github.io/docs/csp/
+  // Use *our* full policy; don’t mix with Helmet defaults
   return helmet.contentSecurityPolicy({
     useDefaults: false,
     directives,
