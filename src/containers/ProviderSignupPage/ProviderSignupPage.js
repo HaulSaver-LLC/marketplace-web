@@ -2,7 +2,7 @@
 // FILE: src/containers/ProviderSignupPage/ProviderSignupPage.js
 // DESCRIPTION: U.S.-ONLY Provider/Carrier signup with FMCSA-focused compliance checks.
 // NOTE: After successful signup, this redirects to /register/payment
-//       for the $10 registration fee (Stripe Payment Intent flow).
+//       for the $4.99 registration fee (Stripe Payment Intent flow).
 // ===============================
 import React, { useMemo } from 'react';
 import { withRouter } from 'react-router-dom';
@@ -353,8 +353,8 @@ export const ProviderSignupPageComponent = props => {
         <p className={css.subhead}>
           U.S.-only signup with FMCSA-focused compliance checks and quick verification.
           <br />
-          <strong>Note:</strong> A one-time <strong>$10 registration fee</strong> is required right
-          after signup to continue to verification.
+          <strong>Note:</strong> A one-time <strong>$4.99 registration fee</strong> is required
+          right after signup to continue to verification.
         </p>
       </div>
 
@@ -389,7 +389,7 @@ export const ProviderSignupPageComponent = props => {
                 <span className={css.stepNum}>2</span> Add truck &amp; U.S. compliance details
               </li>
               <li>
-                <span className={css.stepNum}>3</span> Pay the one-time $10 fee &amp; verify docs
+                <span className={css.stepNum}>3</span> Pay the one-time $4.99 fee &amp; verify docs
               </li>
               <li>
                 <span className={css.stepNum}>4</span> Start bidding on shipments

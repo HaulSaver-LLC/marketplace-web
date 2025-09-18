@@ -19,7 +19,7 @@ import CustomLinksMenu from './CustomLinksMenu/CustomLinksMenu';
 
 import css from './TopbarDesktop.module.css';
 
-const SignupLink = () => {
+/*const SignupLink = () => {
   return (
     <NamedLink name="SignupPage" className={css.topbarLink}>
       <span className={css.topbarLinkLabel}>
@@ -27,7 +27,7 @@ const SignupLink = () => {
       </span>
     </NamedLink>
   );
-};
+}; */
 
 const LoginLink = () => {
   return (
@@ -169,7 +169,8 @@ const TopbarDesktop = props => {
     />
   ) : null;
 
-  const signupLinkMaybe = isAuthenticatedOrJustHydrated ? null : <SignupLink />;
+  //const signupLinkMaybe = null;
+  const signupLinkMaybe = null;
   const loginLinkMaybe = isAuthenticatedOrJustHydrated ? null : <LoginLink />;
 
   const searchFormMaybe = showSearchForm ? (
