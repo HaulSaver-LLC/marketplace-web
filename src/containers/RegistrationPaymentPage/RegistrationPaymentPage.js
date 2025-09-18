@@ -25,7 +25,7 @@ const API_BASE =
   (process.env.NODE_ENV === 'development' ? 'http://localhost:3500' : '');
 
 // --------- constants ----------
-const AMOUNT_CENTS = 1000; // $10
+const AMOUNT_CENTS = 499; // $4.99
 const CURRENCY = 'usd';
 const POST_PAYMENT_REDIRECT = process.env.REACT_APP_POST_PAYMENT_REDIRECT || '/profile-settings';
 
@@ -258,7 +258,7 @@ const PayInner = ({ onSuccess, dispatch, currentUser, clientSecret }) => {
       <PaymentElement options={{ layout: 'tabs' }} />
       {error ? <div className={css.error}>{error}</div> : null}
       <PrimaryButton type="submit" disabled={!stripe || status === 'confirming'}>
-        {status === 'confirming' ? 'Processing…' : 'Pay $10 Registration Fee'}
+        {status === 'confirming' ? 'Processing…' : 'Pay $4.99 Registration Fee'}
       </PrimaryButton>
     </form>
   );
@@ -341,7 +341,7 @@ export const RegistrationPaymentPageComponent = ({ currentUser = null, history, 
   return (
     <Page className={css.page}>
       <H1>Registration Fee</H1>
-      <H3>Pay a one-time $10 fee to continue to verification</H3>
+      <H3>Pay a one-time $4.99 fee to continue to verification</H3>
 
       {status === 'loading' && <div className={css.loading}>Preparing payment…</div>}
       {status === 'error' && <div className={css.error}>{error || 'Unable to start payment.'}</div>}

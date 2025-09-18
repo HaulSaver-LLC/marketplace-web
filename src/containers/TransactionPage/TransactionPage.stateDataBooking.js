@@ -45,7 +45,16 @@ export const getStateDataForBookingProcess = (txInfo, processInfo) => {
       return { processName, processState, showDetailCardHeadings: true, showExtraInfo: true };
     })
     .cond([states.PREAUTHORIZED, PROVIDER], () => {
-      const primary = isCustomerBanned ? null : actionButtonProps(transitions.ACCEPT, PROVIDER);
+      // Read flags from current user (provider) to decide if we can show Accept
+      const currentUser = txInfo?.currentUser || null; // if not available, pass it from caller (see note below)
+      const pd = currentUser?.attributes?.profile?.privateData || {};
+      const isCarrier = pd.accountType === 'ProCarrier';
+      const isPaid = pd.registrationFeePaid === true;
+      const authorityVerified = pd.authorityVerified === true;
+      const canAcceptHaul = !isCarrier || (isCarrier && isPaid && authorityVerified);
+      //const primary = isCustomerBanned ? null : actionButtonProps(transitions.ACCEPT, PROVIDER);
+      const primary =
+        isCustomerBanned || !canAcceptHaul ? null : actionButtonProps(transitions.ACCEPT, PROVIDER);
       const secondary = isCustomerBanned ? null : actionButtonProps(transitions.DECLINE, PROVIDER);
       return {
         processName,

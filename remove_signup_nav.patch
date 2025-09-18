@@ -1,0 +1,60 @@
+diff --git a/src/containers/TopbarContainer/Topbar/TopbarDesktop/TopbarDesktop.js b/src/containers/TopbarContainer/Topbar/TopbarDesktop/TopbarDesktop.js
+index 78c7601..98eea0b 100644
+--- a/src/containers/TopbarContainer/Topbar/TopbarDesktop/TopbarDesktop.js
++++ b/src/containers/TopbarContainer/Topbar/TopbarDesktop/TopbarDesktop.js
+@@ -19,15 +19,7 @@ 
+ import css from './TopbarDesktop.module.css';
+ 
+-const SignupLink = () => {
+-  return (
+-    <NamedLink name="SignupPage" className={css.topbarLink}>
+-      <span className={css.topbarLinkLabel}>
+-        <FormattedMessage id="TopbarDesktop.signup" />
+-      </span>
+-    </NamedLink>
+-  );
+-};
++;
+ 
+ const LoginLink = () => {
+   return (
+@@ -169,7 +161,7 @@     />
+   ) : null;
+ 
+-  const signupLinkMaybe = isAuthenticatedOrJustHydrated ? null : <SignupLink />;
++  const signupLinkMaybe = null;
+   const loginLinkMaybe = isAuthenticatedOrJustHydrated ? null : <LoginLink />;
+ 
+   const searchFormMaybe = showSearchForm ? (
+diff --git a/src/containers/TopbarContainer/Topbar/TopbarMobileMenu/TopbarMobileMenu.js b/src/containers/TopbarContainer/Topbar/TopbarMobileMenu/TopbarMobileMenu.js
+index 2800a03..f7bf6a5 100644
+--- a/src/containers/TopbarContainer/Topbar/TopbarMobileMenu/TopbarMobileMenu.js
++++ b/src/containers/TopbarContainer/Topbar/TopbarMobileMenu/TopbarMobileMenu.js
+@@ -98,23 +98,17 @@   ) : null;
+ 
+   if (!isAuthenticated) {
+-    const signup = (
+-      <NamedLink name="SignupPage" className={css.signupLink}>
+-        <FormattedMessage id="TopbarMobileMenu.signupLink" />
+-      </NamedLink>
+-    );
+-
+-    const login = (
++const login = (
+       <NamedLink name="LoginPage" className={css.loginLink}>
+         <FormattedMessage id="TopbarMobileMenu.loginLink" />
+       </NamedLink>
+     );
+ 
+     const signupOrLogin = (
+-      <span className={css.authenticationLinks}>
+-        <FormattedMessage id="TopbarMobileMenu.signupOrLogin" values={{ signup, login }} />
+-      </span>
+-    );
++  <span className={css.authenticationLinks}>
++    {login}
++  </span>
++);
+     return (
+       <nav className={css.root}>
+         <div className={css.content}>

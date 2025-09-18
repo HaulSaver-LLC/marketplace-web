@@ -2,7 +2,7 @@
 // FILE: src/containers/ShipperSignupPage/ShipperSignupPage.js
 // DESCRIPTION: U.S.-ONLY signup page for Customers/Shippers using Sharetribe Flex components.
 // NOTE: After successful signup, this redirects to /register/payment
-//       for the $10 registration fee (Stripe Payment Intent flow).
+//       for the $4.99 registration fee (Stripe Payment Intent flow).
 // ===============================
 import React, { useMemo } from 'react';
 import { withRouter } from 'react-router-dom';
@@ -44,7 +44,10 @@ const USER_TYPE_OPTIONS = [
 // US-only
 const ORIGIN_REGION_OPTIONS = [{ key: 'us', label: 'United States (US-only accounts)' }];
 
-const CONTACT_PREFS = [{ key: 'email', label: 'Email' }, { key: 'phone', label: 'Phone' }];
+const CONTACT_PREFS = [
+  { key: 'email', label: 'Email' },
+  { key: 'phone', label: 'Phone' },
+];
 
 export const ShipperSignupPageComponent = props => {
   const onSubmit = async values => {
@@ -102,7 +105,7 @@ export const ShipperSignupPageComponent = props => {
       if (props.onSignup) {
         await props.onSignup(payload);
       }
-      // Redirect to the $10 registration fee step before verification
+      // Redirect to the $4.99 registration fee step before verification
       props.history.push('/register/payment');
       return undefined;
     } catch (e) {
@@ -125,8 +128,8 @@ export const ShipperSignupPageComponent = props => {
         <p className={css.subhead}>
           Create your account to post shipments, compare bids, and manage deliveries in one place.
           <br />
-          <strong>Note:</strong> A one-time <strong>$10 registration fee</strong> is required right
-          after signup to continue to verification.
+          <strong>Note:</strong> A one-time <strong>$4.99 registration fee</strong> is required
+          right after signup to continue to verification.
         </p>
       </div>
 
@@ -158,7 +161,7 @@ export const ShipperSignupPageComponent = props => {
                 <span className={css.stepNum}>1</span> Create your account
               </li>
               <li>
-                <span className={css.stepNum}>2</span> Pay the one-time $10 registration fee
+                <span className={css.stepNum}>2</span> Pay the one-time $4.99 registration fee
               </li>
               <li>
                 <span className={css.stepNum}>3</span> Post your shipment details
